@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 export interface ThemeSettings {
   themeColor: string;
@@ -25,8 +26,16 @@ function applyTheme(settings: ThemeSettings) {
   root.style.setProperty('--theme-color', settings.themeColor);
   root.style.setProperty('--bg-color', settings.bgColor);
   root.style.setProperty('--text-color', settings.textColor);
-  // 文本区域透明度：0-100 映射到 0-1
-  root.style.setProperty('--transparency', String(1 - settings.transparency / 100));
+}
+
+async function loadTheme(): Promise<ThemeSettings> {
+  const settings = await invoke<any>('get_settings');
+  return {
+    themeColor: settings.theme_color || defaultTheme.themeColor,
+    bgColor: settings.bg_color || defaultTheme.bgColor,
+    textColor: settings.text_color || defaultTheme.textColor,
+    transparency: settings.transparency ?? defaultTheme.transparency,
+  };
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -34,18 +43,18 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeSettings>(defaultTheme);
 
-  // 从 Tauri 设置加载主题
   useEffect(() => {
-    invoke<any>('get_settings')
-      .then((settings) => {
-        setTheme({
-          themeColor: settings.theme_color || defaultTheme.themeColor,
-          bgColor: settings.bg_color || defaultTheme.bgColor,
-          textColor: settings.text_color || defaultTheme.textColor,
-          transparency: settings.transparency ?? defaultTheme.transparency,
-        });
-      })
-      .catch(console.error);
+    loadTheme().then(setTheme).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen('theme-changed', () => {
+      loadTheme().then(setTheme).catch(console.error);
+    });
+
+    return () => {
+      unlisten.then(f => f());
+    };
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LatexRenderer } from '@/components/LatexRenderer';
+import { hexToRgba } from '@/lib/utils';
 
 interface TranslationViewProps {
   translatedText: string;
@@ -10,11 +11,15 @@ interface TranslationViewProps {
 
 export function TranslationView({ translatedText, isLoading, error }: TranslationViewProps) {
   const { theme } = useTheme();
+  const bgAlpha = 1 - theme.transparency / 100;
+  const bgColorWithAlpha = hexToRgba(theme.bgColor, bgAlpha);
 
   return (
     <ScrollArea 
       className="h-[calc(100vh-2.5rem)]"
-      style={{ backgroundColor: theme.bgColor }}
+      style={{ 
+        backgroundColor: bgColorWithAlpha,
+      }}
     >
       <div className="p-4 min-h-full" style={{ color: theme.textColor }}>
         {isLoading && (

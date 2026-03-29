@@ -69,8 +69,14 @@ pub fn get_settings() -> Result<Settings, String> {
 }
 
 #[tauri::command]
-pub fn set_settings(settings: Settings) -> Result<(), String> {
+pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String> {
     let path = get_settings_path();
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
-    fs::write(&path, content).map_err(|e| e.to_string())
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+
+    // 发送全局事件通知所有窗口
+    app.emit_all("theme-changed", ())
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
