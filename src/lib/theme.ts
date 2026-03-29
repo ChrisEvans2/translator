@@ -13,7 +13,6 @@ export function applyTheme(settings: ThemeSettings) {
   root.style.setProperty('--bg-color', settings.bgColor);
   root.style.setProperty('--text-color', settings.textColor);
   root.style.setProperty('--transparency', String(1 - settings.transparency / 100));
-  root.style.setProperty('--titlebar-opacity', String(settings.transparency / 200));
 }
 
 export function useTheme() {
