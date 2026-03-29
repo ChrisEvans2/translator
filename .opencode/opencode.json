@@ -1,7 +1,4 @@
 {
-  "plugin": [
-    "@tmegit/opencode-worktree-session"
-  ],
   "background_task": {
     "defaultConcurrency": 5,
     "providerConcurrency": {

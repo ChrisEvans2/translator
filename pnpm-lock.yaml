@@ -72,9 +72,6 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.10.1
-      '@tmegit/opencode-worktree-session':
-        specifier: ^1.1.0
-        version: 1.1.0
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -374,12 +371,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
-
-  '@opencode-ai/plugin@1.1.1':
-    resolution: {integrity: sha512-OZGvpDal8YsSo6dnatHfwviSToGZ6mJJyEKZGxUyWDuGCP7VhcoPkoM16ktl7TCVHkDK+TdwY9tKzkzFqQNc5w==}
-
-  '@opencode-ai/sdk@1.1.1':
-    resolution: {integrity: sha512-PfXujMrHGeMnpS8Gd2BXSY+zZajlztcAvcokf06NtAhd0Mbo/hCLXgW0NBCQ+3FX3e/G2PNwz2DqMdtzyIZaCQ==}
 
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
@@ -1079,9 +1070,6 @@ packages:
   '@tauri-apps/plugin-opener@2.5.3':
     resolution: {integrity: sha512-CCcUltXMOfUEArbf3db3kCE7Ggy1ExBEBl51Ko2ODJ6GDYHRp1nSNlQm5uNCFY5k7/ufaK5Ib3Du/Zir19IYQQ==}
 
-  '@tmegit/opencode-worktree-session@1.1.0':
-    resolution: {integrity: sha512-JvBXaBl1CXO7gtYhh6n6OfNKARddzRdZwUZooWa2RTayqiQIlRlOBJhzmYo/vw45BrS7UE1bPjBdnq4PNbum3w==}
-
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -1519,9 +1507,6 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
-  zod@4.1.8:
-    resolution: {integrity: sha512-5R1P+WwQqmmMIEACyzSvo4JXHY5WiAFHRMg+zBZKgKS+Q1viRa0C1hmUKtHltoIFKtIdki3pRxkmpP74jnNYHQ==}
-
 snapshots:
 
   '@babel/code-frame@7.29.0':
@@ -1749,13 +1734,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
-
-  '@opencode-ai/plugin@1.1.1':
-    dependencies:
-      '@opencode-ai/sdk': 1.1.1
-      zod: 4.1.8
-
-  '@opencode-ai/sdk@1.1.1': {}
 
   '@radix-ui/number@1.1.1': {}
 
@@ -2341,10 +2319,6 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.10.1
 
-  '@tmegit/opencode-worktree-session@1.1.0':
-    dependencies:
-      '@opencode-ai/plugin': 1.1.1
-
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.29.2
@@ -2727,5 +2701,3 @@ snapshots:
       lightningcss: 1.32.0
 
   yallist@3.1.1: {}
-
-  zod@4.1.8: {}
