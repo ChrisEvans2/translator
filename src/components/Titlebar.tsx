@@ -4,6 +4,7 @@ import { Settings, Copy, Minus, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { hexToRgba } from '@/lib/utils';
 
 interface TitlebarProps {
   onSettingsClick: () => void;
@@ -21,6 +22,8 @@ const engines = [
 
 export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, currentEngine }: TitlebarProps) {
   const { theme } = useTheme();
+  const titlebarBgAlpha = 0.5 + theme.transparency / 200;
+  const titlebarBgColor = hexToRgba(theme.themeColor, titlebarBgAlpha);
 
   const handleSettingsClick = () => {
     onSettingsClick();
@@ -64,7 +67,7 @@ export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, current
     <div
       className="h-10 flex items-center px-3 select-none relative cursor-default"
       style={{ 
-        backgroundColor: theme.themeColor,
+        backgroundColor: titlebarBgColor,
       }}
     >
       {/* 左侧 - 设置按钮 */}
