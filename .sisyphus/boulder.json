@@ -1,0 +1,37 @@
+{
+  "active_plan": "D:\\VScode\\Work_code\\translate_app\\.sisyphus\\plans\\translate-app.md",
+  "started_at": "2026-03-27T01:47:29.777Z",
+  "session_ids": [
+    "ses_2d4f74160ffenqiEGew8ip985s",
+    "ses_2d304ba65ffeaXwnMTjCMs1tHG",
+    "ses_2d2de43acffeD7EblHO5DIAR9W",
+    "ses_2d2db8e50ffeS2BQXaozMfunFf",
+    "ses_2d208517effe3dCIl0f3k3C4kV",
+    "ses_2d0a25072ffebY7l2PT9TNXCsH",
+    "ses_2d0a27d12ffemLeljb0m1te41o",
+    "ses_2cfa41e88ffe4zJwfwDpKOYRmu",
+    "ses_2cdb1d60fffeDtB8F2QurhXeWl"
+  ],
+  "plan_name": "translate-app",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "项目脚手架初始化",
+      "session_id": "ses_2d304ba65ffeaXwnMTjCMs1tHG",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-03-27T01:49:19.273Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Tailwind CSS + shadcn/ui 配置",
+      "session_id": "ses_2d2db8e50ffeS2BQXaozMfunFf",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-03-27T02:34:17.544Z"
+    }
+  }
+}

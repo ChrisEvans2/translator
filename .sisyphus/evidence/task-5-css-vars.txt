@@ -1,0 +1,25 @@
+=== Task 5: CSS Variable Theme System ===
+
+=== Files Created ===
+- src/lib/theme.ts: applyTheme function, useTheme hook
+- src/contexts/ThemeContext.tsx: ThemeProvider, useTheme context
+
+=== CSS Variables Defined ===
+:root {
+  --theme-color: #426666;
+  --bg-color: #3f3f3f;
+  --text-color: #ffffff;
+  --settings-bg: #212121;
+  --transparency: 1;
+  --titlebar-opacity: 0.5;
+}
+
+=== Transparency Mapping ===
+- Input: 0-100 (percentage)
+- Output: --transparency = 1 - (input / 100)
+- Output: --titlebar-opacity = input / 200
+
+=== Verification ===
+- CSS variables in index.css: ✓
+- applyTheme function maps transparency correctly: ✓
+- ThemeContext exports useTheme hook: ✓

@@ -1,0 +1,42 @@
+=== Task 4: Settings Storage Module (Rust) ===
+
+=== Files Created ===
+- src-tauri/src/settings.rs
+
+=== Settings Structure ===
+- source_lang: String
+- target_lang: String  
+- engine: String
+- clipboard_enabled: bool
+- theme_color: String
+- bg_color: String
+- text_color: String
+- transparency: u8
+- locale: String
+- baidu_app_id: String
+- baidu_secret_key: String
+- google_url: String
+- google_api_key: String
+- siliconflow_api_key: String
+- siliconflow_model: String
+- ollama_url: String
+- ollama_model: String
+
+=== Tauri Commands ===
+- get_settings(): Returns settings from JSON file
+- set_settings(settings): Saves settings to JSON file
+
+=== Storage Location ===
+- Platform config directory: dirs::config_dir() / "translate_app" / "settings.json"
+
+=== Dependencies Added (Cargo.toml) ===
+- tokio = { version = "1", features = ["full"] }
+- reqwest = { version = "0.12", features = ["json"] }
+- md-5 = "0.10"
+- hex = "0.4"
+- dirs = "6"
+
+=== Verification ===
+- Settings module created: ✓
+- Tauri commands registered: ✓
+- JSON persistence: ✓
