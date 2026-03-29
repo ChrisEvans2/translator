@@ -1,0 +1,10 @@
+{
+  "terminal": {
+    "mode": "default"
+  },
+  "postWorktree": {
+    "cmd": "",
+    "args": ""
+  },
+  "configToolsAvailable": false
+}
