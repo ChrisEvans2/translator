@@ -1,13 +1,17 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+html, body, #root {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   --theme-color: #426666;
   --bg-color: #3f3f3f;
   --text-color: #ffffff;
   --settings-bg: #212121;
-  --transparency: 1;
-  --titlebar-opacity: 0.5;
 }
 
 .settings-scroll {
