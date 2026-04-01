@@ -20,6 +20,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   ] as const;
 
   const [activeSection, setActiveSection] = useState<(typeof sections)[number]['id']>('general');
+  const [expandedEngine, setExpandedEngine] = useState<string | null>('baidu');
 
   const handleThemeChange = async (newTheme: typeof theme) => {
     setTheme(newTheme);
@@ -211,33 +212,76 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
             )}
 
             {activeSection === 'engines' && (
-              <div className="space-y-0">
-                <div className="group relative space-y-3 p-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium">百度翻译</h4>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-24 top-3">默认使用百度翻译开发平台API</span>
-                  </div>
-                  <input type="text" placeholder="APP ID" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                  <input type="password" placeholder="Secret Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                  <input type="text" placeholder="翻译源 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+              <div className="space-y-2">
+                {/* 百度翻译 */}
+                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEngine(expandedEngine === 'baidu' ? null : 'baidu')}
+                    className="group relative w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
+                  >
+                    <span>百度翻译</span>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-20 top-2.5 whitespace-nowrap">默认使用百度翻译开发平台API</span>
+                  </button>
+                  {expandedEngine === 'baidu' && (
+                    <div className="space-y-3 p-3 pt-0">
+                      <input type="text" placeholder="APP ID" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                      <input type="password" placeholder="Secret Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                      <input type="text" placeholder="翻译源 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    </div>
+                  )}
                 </div>
-                <div className="group relative space-y-3 p-3 border-t border-[#9e9e9e]">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium">谷歌翻译</h4>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-20 top-3">默认使用谷歌翻译源URL</span>
-                  </div>
-                  <input type="text" placeholder="镜像 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                  <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+
+                {/* 谷歌翻译 */}
+                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEngine(expandedEngine === 'google' ? null : 'google')}
+                    className="group relative w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
+                  >
+                    <span>谷歌翻译</span>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-16 top-2.5 whitespace-nowrap">默认使用谷歌翻译源URL</span>
+                  </button>
+                  {expandedEngine === 'google' && (
+                    <div className="space-y-3 p-3 pt-0">
+                      <input type="text" placeholder="镜像 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                      <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-3 p-3 border-t border-[#9e9e9e]">
-                  <h4 className="font-medium">硅基流动</h4>
-                  <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                  <input type="text" placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+
+                {/* 硅基流动 */}
+                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEngine(expandedEngine === 'siliconflow' ? null : 'siliconflow')}
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors"
+                  >
+                    硅基流动
+                  </button>
+                  {expandedEngine === 'siliconflow' && (
+                    <div className="space-y-3 p-3 pt-0">
+                      <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                      <input type="text" placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-3 p-3 border-t border-[#9e9e9e]">
-                  <h4 className="font-medium">Ollama</h4>
-                  <input type="text" placeholder="URL (默认 http://localhost:11434)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                  <input type="text" placeholder="模型 (默认 llama2)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+
+                {/* Ollama */}
+                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEngine(expandedEngine === 'ollama' ? null : 'ollama')}
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors"
+                  >
+                    Ollama
+                  </button>
+                  {expandedEngine === 'ollama' && (
+                    <div className="space-y-3 p-3 pt-0">
+                      <input type="text" placeholder="URL (默认 http://localhost:11434)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                      <input type="text" placeholder="模型 (默认 llama2)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
