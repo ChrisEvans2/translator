@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 interface SettingsModalProps {
   open?: boolean;
@@ -19,6 +20,25 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   ] as const;
 
   const [activeSection, setActiveSection] = useState<(typeof sections)[number]['id']>('general');
+
+  const handleThemeChange = async (newTheme: typeof theme) => {
+    setTheme(newTheme);
+    
+    try {
+      const settings = await invoke<any>('get_settings');
+      await invoke('set_settings', {
+        settings: {
+          ...settings,
+          theme_color: newTheme.themeColor,
+          bg_color: newTheme.bgColor,
+          text_color: newTheme.textColor,
+          transparency: newTheme.transparency,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save theme settings:', error);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -146,7 +166,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   <input
                     type="color"
                     value={theme.themeColor}
-                    onChange={(e) => setTheme({ ...theme, themeColor: e.target.value })}
+                    onChange={(e) => {
+                      void handleThemeChange({ ...theme, themeColor: e.target.value });
+                    }}
                     className="w-full h-10 rounded cursor-pointer"
                   />
                 </div>
@@ -155,7 +177,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   <input
                     type="color"
                     value={theme.bgColor}
-                    onChange={(e) => setTheme({ ...theme, bgColor: e.target.value })}
+                    onChange={(e) => {
+                      void handleThemeChange({ ...theme, bgColor: e.target.value });
+                    }}
                     className="w-full h-10 rounded cursor-pointer"
                   />
                 </div>
@@ -164,7 +188,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   <input
                     type="color"
                     value={theme.textColor}
-                    onChange={(e) => setTheme({ ...theme, textColor: e.target.value })}
+                    onChange={(e) => {
+                      void handleThemeChange({ ...theme, textColor: e.target.value });
+                    }}
                     className="w-full h-10 rounded cursor-pointer"
                   />
                 </div>
@@ -175,7 +201,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                     min="0"
                     max="100"
                     value={theme.transparency}
-                    onChange={(e) => setTheme({ ...theme, transparency: Number(e.target.value) })}
+                    onChange={(e) => {
+                      void handleThemeChange({ ...theme, transparency: Number(e.target.value) });
+                    }}
                     className="w-full"
                   />
                 </div>
@@ -183,23 +211,30 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
             )}
 
             {activeSection === 'engines' && (
-              <div className="space-y-4">
-                <div className="space-y-3 p-3 border-l-2 border-gray-600">
-                  <h4 className="font-medium">百度翻译</h4>
+              <div className="space-y-0">
+                <div className="group relative space-y-3 p-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">百度翻译</h4>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-24 top-3">默认使用百度翻译开发平台API</span>
+                  </div>
                   <input type="text" placeholder="APP ID" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                   <input type="password" placeholder="Secret Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                  <input type="text" placeholder="翻译源 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                 </div>
-                <div className="space-y-3 p-3 border-l-2 border-gray-600">
-                  <h4 className="font-medium">谷歌翻译</h4>
+                <div className="group relative space-y-3 p-3 border-t border-[#9e9e9e]">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">谷歌翻译</h4>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-20 top-3">默认使用谷歌翻译源URL</span>
+                  </div>
                   <input type="text" placeholder="镜像 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                   <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                 </div>
-                <div className="space-y-3 p-3 border-l-2 border-gray-600">
+                <div className="space-y-3 p-3 border-t border-[#9e9e9e]">
                   <h4 className="font-medium">硅基流动</h4>
                   <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                   <input type="text" placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                 </div>
-                <div className="space-y-3 p-3 border-l-2 border-gray-600">
+                <div className="space-y-3 p-3 border-t border-[#9e9e9e]">
                   <h4 className="font-medium">Ollama</h4>
                   <input type="text" placeholder="URL (默认 http://localhost:11434)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
                   <input type="text" placeholder="模型 (默认 llama2)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
