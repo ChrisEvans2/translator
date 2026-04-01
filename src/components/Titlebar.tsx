@@ -22,7 +22,7 @@ const engines = [
 
 export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, currentEngine }: TitlebarProps) {
   const { theme } = useTheme();
-  const titlebarBgAlpha = 0.5 + theme.transparency / 200;
+  const titlebarBgAlpha = 1 - theme.transparency / 200;
   const titlebarBgColor = hexToRgba(theme.themeColor, titlebarBgAlpha);
 
   const handleSettingsClick = () => {
