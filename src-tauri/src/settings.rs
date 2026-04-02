@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tauri::Emitter;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
@@ -75,8 +76,8 @@ pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), Str
     fs::write(&path, content).map_err(|e| e.to_string())?;
 
     // 发送全局事件通知所有窗口
-    app.emit_all("theme-changed", ())
-        .map_err(|e| e.to_string())?;
+    app.emit("theme-changed", ())
+        .map_err(|e: tauri::Error| e.to_string())?;
 
     Ok(())
 }

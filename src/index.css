@@ -27,3 +27,46 @@ html, body, #root {
 .settings-popover {
   transform-origin: var(--settings-origin-x, 50%) var(--settings-origin-y, 0px);
 }
+
+.engine-input-wrapper {
+  position: relative;
+}
+
+.engine-input-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: var(--theme-color);
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.engine-input-wrapper:focus-within::after {
+  width: 100%;
+  left: 0;
+}
+
+.engine-input {
+  border-bottom: 2px solid #ffffff;
+  transition: border-color 0.3s ease;
+}
+
+.engine-input-wrapper:focus-within .engine-input {
+  border-bottom-color: transparent;
+}
+
+.settings-select {
+  background-color: #212121;
+  border-bottom: 2px solid #ffffff;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.settings-select option {
+  background-color: #1C1D21;
+  color: white;
+}

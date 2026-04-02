@@ -24,9 +24,16 @@ Hephaestus 完成 → 自动触发审查
     └─ 循环直到通过
     ↓
 如果通过:
-    ├─ 更新 CHANGELOG.md
-    ├─ commit (如果要求)
-    └─ 完成
+    ├─ 更新 Feature.md（记录本次小更新）
+    └─ 等待用户指示是否 commit
+
+你 (Founder) 说:"commit"
+    ↓
+Sisyphus 执行:
+    ├─ 将 Feature.md 总结写入 CHANGELOG.md
+    ├─ 清空 Feature.md
+    ├─ 更新版本号 (0.0.x → 0.0.x+1)
+    └─ git commit
 ```
 
 ## Git 分支策略
@@ -42,11 +49,17 @@ Hephaestus 完成 → 自动触发审查
 - 每次功能更新递增 1
 - 当前版本：`0.1.0`
 
-每次更新需要:
-1. 修改代码
-2. 通过审查
-3. 更新 CHANGELOG.md
-4. 版本号 +1
+**版本迭代流程**：
+1. 日常开发：更新 Feature.md（记录小更新）
+2. 用户说 "commit"：
+   - 将 Feature.md 总结写入 CHANGELOG.md
+   - 清空 Feature.md
+   - 版本号 +1
+   - git commit
+
+**文件说明**：
+- `Feature.md`：记录当前版本的小更新，版本迭代后清空
+- `CHANGELOG.md`：记录所有版本的更新历史
 
 ## 工作流使用
 
@@ -78,8 +91,14 @@ git merge dev
 3. Momus 审查代码
 4. 如果不通过 → 自动重启 Hephaestus 修复
 5. 循环直到通过
-6. 更新 CHANGELOG
-7. 询问是否 commit
+6. 更新 Feature.md（记录本次更新）
+7. 等待你指示是否 commit
+
+当你决定 commit 时，我会：
+1. 将 Feature.md 总结写入 CHANGELOG.md
+2. 清空 Feature.md
+3. 版本号 +1
+4. git commit
 
 ## 审查标准
 
@@ -105,10 +124,15 @@ cat package.json | grep version
 ```
 translate_app/
 ├── .opencode/
-│   └── opencode.json                      # Oh My OpenCode 配置
-├── .sisyphus/                             # Oh My OpenCode 工作记录
+│   ├── opencode.json                      # OpenCode 配置
+│   └── skills/                            # Agent 技能文件
+│       ├── hephaestus/SKILL.md            # 代码实现 agent
+│       ├── momus/SKILL.md                 # 代码审查 agent
+│       └── librarian/SKILL.md             # 研究 agent
+├── .sisyphus/                             # 工作记录
 ├── src/                                   # 源代码
-├── CHANGELOG.md                           # 版本更新日志
+├── Feature.md                             # 当前版本小更新记录
+├── CHANGELOG.md                           # 版本更新历史
 └── package.json                           # 项目配置（包含版本号）
 ```
 
@@ -117,15 +141,11 @@ translate_app/
 ### .opencode/opencode.json
 ```json
 {
-  "background_task": {
-    "defaultConcurrency": 5,
-    "providerConcurrency": {
-      "anthropic": 3,
-      "openai": 3
-    }
-  }
+  "$schema": "https://opencode.ai/config.json"
 }
 ```
+
+当前配置为空，使用 OpenCode 默认设置。
 
 ## 故障排除
 

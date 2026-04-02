@@ -1,6 +1,6 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -10,6 +10,20 @@ interface SettingsModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+const defaultSettings = {
+  source_lang: 'auto',
+  target_lang: 'zh',
+  engine: 'google',
+  google_url: 'https://translate.googleapis.com/translate_a/single',
+  google_api_key: '',
+  baidu_app_id: '',
+  baidu_secret_key: '',
+  siliconflow_api_key: '',
+  siliconflow_model: 'deepseek-ai/DeepSeek-V3',
+  ollama_url: 'http://localhost:11434',
+  ollama_model: 'llama2',
+};
 
 export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps) {
   const { theme, setTheme } = useTheme();
@@ -21,15 +35,46 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
 
   const [activeSection, setActiveSection] = useState<(typeof sections)[number]['id']>('general');
   const [expandedEngine, setExpandedEngine] = useState<string | null>('baidu');
+  const [settings, setSettings] = useState(defaultSettings);
+
+  useEffect(() => {
+    if (!open) return;
+    invoke<any>('get_settings').then((s) => {
+      setSettings({
+        source_lang: s.source_lang || defaultSettings.source_lang,
+        target_lang: s.target_lang || defaultSettings.target_lang,
+        engine: s.engine || defaultSettings.engine,
+        google_url: s.google_url || defaultSettings.google_url,
+        google_api_key: s.google_api_key || '',
+        baidu_app_id: s.baidu_app_id || '',
+        baidu_secret_key: s.baidu_secret_key || '',
+        siliconflow_api_key: s.siliconflow_api_key || '',
+        siliconflow_model: s.siliconflow_model || defaultSettings.siliconflow_model,
+        ollama_url: s.ollama_url || defaultSettings.ollama_url,
+        ollama_model: s.ollama_model || defaultSettings.ollama_model,
+      });
+    }).catch(console.error);
+  }, [open]);
+
+  const handleSettingsChange = async (updates: Partial<typeof settings>) => {
+    const newSettings = { ...settings, ...updates };
+    setSettings(newSettings);
+    try {
+      const current = await invoke<any>('get_settings');
+      await invoke('set_settings', { settings: { ...current, ...newSettings } });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    }
+  };
 
   const handleThemeChange = async (newTheme: typeof theme) => {
     setTheme(newTheme);
     
     try {
-      const settings = await invoke<any>('get_settings');
+      const current = await invoke<any>('get_settings');
       await invoke('set_settings', {
         settings: {
-          ...settings,
+          ...current,
           theme_color: newTheme.themeColor,
           bg_color: newTheme.bgColor,
           text_color: newTheme.textColor,
@@ -38,6 +83,31 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
       });
     } catch (error) {
       console.error('Failed to save theme settings:', error);
+    }
+  };
+
+  const handleReset = async () => {
+    setSettings(defaultSettings);
+    setTheme({
+      themeColor: '#789262',
+      bgColor: '#3F3F3F',
+      textColor: '#ffffff',
+      transparency: 50,
+    });
+    try {
+      const current = await invoke<any>('get_settings');
+      await invoke('set_settings', {
+        settings: {
+          ...current,
+          ...defaultSettings,
+          theme_color: '#789262',
+          bg_color: '#3F3F3F',
+          text_color: '#ffffff',
+          transparency: 50,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
     }
   };
 
@@ -131,7 +201,11 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">源语言</label>
-                  <select className="w-full p-2 rounded bg-gray-700 border border-gray-600" defaultValue="auto">
+                  <select
+                    value={settings.source_lang}
+                    onChange={(e) => void handleSettingsChange({ source_lang: e.target.value })}
+                    className="settings-select w-full p-2 rounded text-white outline-none"
+                  >
                     <option value="auto">自动检测</option>
                     <option value="zh">中文</option>
                     <option value="en">英语</option>
@@ -141,7 +215,11 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">目标语言</label>
-                  <select className="w-full p-2 rounded bg-gray-700 border border-gray-600" defaultValue="zh">
+                  <select
+                    value={settings.target_lang}
+                    onChange={(e) => void handleSettingsChange({ target_lang: e.target.value })}
+                    className="settings-select w-full p-2 rounded text-white outline-none"
+                  >
                     <option value="zh">中文</option>
                     <option value="en">英语</option>
                     <option value="ja">日语</option>
@@ -150,13 +228,25 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">翻译引擎</label>
-                  <select className="w-full p-2 rounded bg-gray-700 border border-gray-600" defaultValue="baidu">
-                    <option value="baidu">百度翻译</option>
+                  <select
+                    value={settings.engine}
+                    onChange={(e) => void handleSettingsChange({ engine: e.target.value })}
+                    className="settings-select w-full p-2 rounded text-white outline-none"
+                  >
                     <option value="google">谷歌翻译</option>
+                    <option value="baidu">百度翻译</option>
                     <option value="siliconflow">硅基流动</option>
                     <option value="ollama">Ollama</option>
                   </select>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void handleReset()}
+                  className="w-full p-2 rounded bg-[#212121] border border-[#9e9e9e] text-white text-sm hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  重置设置
+                </button>
               </div>
             )}
 
@@ -212,7 +302,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
             )}
 
             {activeSection === 'engines' && (
-              <div className="space-y-2">
+              <div className="space-y-0">
                 {/* 百度翻译 */}
                 <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
                   <button
@@ -222,18 +312,41 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   >
                     <span>百度翻译</span>
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-20 top-2.5 whitespace-nowrap">默认使用百度翻译开发平台API</span>
+                    {expandedEngine === 'baidu' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'baidu' && (
-                    <div className="space-y-3 p-3 pt-0">
-                      <input type="text" placeholder="APP ID" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                      <input type="password" placeholder="Secret Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                      <input type="text" placeholder="翻译源 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    <div className="space-y-2 p-3 pt-0">
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="APP ID"
+                          value={settings.baidu_app_id}
+                          onChange={(e) => void handleSettingsChange({ baidu_app_id: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="password"
+                          placeholder="Secret Key"
+                          value={settings.baidu_secret_key}
+                          onChange={(e) => void handleSettingsChange({ baidu_secret_key: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="翻译源 URL"
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* 谷歌翻译 */}
-                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'google' ? null : 'google')}
@@ -241,45 +354,96 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   >
                     <span>谷歌翻译</span>
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-16 top-2.5 whitespace-nowrap">默认使用谷歌翻译源URL</span>
+                    {expandedEngine === 'google' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'google' && (
-                    <div className="space-y-3 p-3 pt-0">
-                      <input type="text" placeholder="镜像 URL" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                      <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    <div className="space-y-2 p-3 pt-0">
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="镜像 URL"
+                          value={settings.google_url}
+                          onChange={(e) => void handleSettingsChange({ google_url: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="password"
+                          placeholder="API Key"
+                          value={settings.google_api_key}
+                          onChange={(e) => void handleSettingsChange({ google_api_key: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* 硅基流动 */}
-                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'siliconflow' ? null : 'siliconflow')}
-                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors"
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
                   >
-                    硅基流动
+                    <span>硅基流动</span>
+                    {expandedEngine === 'siliconflow' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'siliconflow' && (
-                    <div className="space-y-3 p-3 pt-0">
-                      <input type="password" placeholder="API Key" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                      <input type="text" placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    <div className="space-y-2 p-3 pt-0">
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="password"
+                          placeholder="API Key"
+                          value={settings.siliconflow_api_key}
+                          onChange={(e) => void handleSettingsChange({ siliconflow_api_key: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)"
+                          value={settings.siliconflow_model}
+                          onChange={(e) => void handleSettingsChange({ siliconflow_model: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Ollama */}
-                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'ollama' ? null : 'ollama')}
-                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors"
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
                   >
-                    Ollama
+                    <span>Ollama</span>
+                    {expandedEngine === 'ollama' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'ollama' && (
-                    <div className="space-y-3 p-3 pt-0">
-                      <input type="text" placeholder="URL (默认 http://localhost:11434)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
-                      <input type="text" placeholder="模型 (默认 llama2)" className="w-full p-2 rounded bg-gray-700 border border-gray-600" />
+                    <div className="space-y-2 p-3 pt-0">
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="URL (默认 http://localhost:11434)"
+                          value={settings.ollama_url}
+                          onChange={(e) => void handleSettingsChange({ ollama_url: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="模型 (默认 llama2)"
+                          value={settings.ollama_model}
+                          onChange={(e) => void handleSettingsChange({ ollama_model: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
