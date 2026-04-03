@@ -34,6 +34,10 @@ pub fn spawn_clipboard_monitor(app: AppHandle) {
                     pending_text = Some(text);
                     pending_since = Some(Instant::now());
                 }
+            } else {
+                // 剪切板内容为空或为图像等非文本内容，清除待处理状态
+                pending_text = None;
+                pending_since = None;
             }
 
             if let Some(candidate) = &pending_text {
