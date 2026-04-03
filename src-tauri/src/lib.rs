@@ -120,6 +120,11 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             spawn_clipboard_monitor(app.handle().clone());
+            
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_always_on_top(true);
+            }
+            
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
