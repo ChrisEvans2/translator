@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { Titlebar } from '@/components/Titlebar';
 import { TranslationView } from '@/components/TranslationView';
@@ -12,6 +13,20 @@ interface Settings {
   target_lang: string;
   engine: string;
   clipboard_enabled: boolean;
+  theme_color: string;
+  bg_color: string;
+  text_color: string;
+  transparency: number;
+  locale: string;
+  baidu_app_id: string;
+  baidu_secret_key: string;
+  google_mirror_url: string;
+  google_official_url: string;
+  google_api_key: string;
+  siliconflow_api_key: string;
+  siliconflow_model: string;
+  ollama_url: string;
+  ollama_model: string;
 }
 
 function TranslationApp() {
@@ -23,6 +38,17 @@ function TranslationApp() {
 
   useEffect(() => {
     invoke<Settings>('get_settings').then(setSettings).catch(console.error);
+
+    const unlisten = listen('theme-changed', async () => {
+      console.log('[App] Received theme-changed event, reloading settings...');
+      const newSettings = await invoke<Settings>('get_settings');
+      console.log('[App] Settings loaded:', newSettings);
+      setSettings(newSettings);
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
   }, []);
 
   useEffect(() => {
@@ -80,6 +106,7 @@ function TranslationApp() {
         onCopyClick={handleCopy}
         currentEngine={settings?.engine || 'baidu'}
         onEngineChange={(engine) => {
+          console.log('[App] Engine changed to:', engine);
           if (settings) {
             const newSettings = { ...settings, engine };
             setSettings(newSettings);

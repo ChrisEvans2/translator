@@ -1,10 +1,11 @@
 import { useTheme } from '@/contexts/ThemeContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { X, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 interface SettingsModalProps {
   open?: boolean;
@@ -15,7 +16,8 @@ const defaultSettings = {
   source_lang: 'auto',
   target_lang: 'zh',
   engine: 'google',
-  google_url: 'https://translate.googleapis.com/translate_a/single',
+  google_mirror_url: 'https://translate.googleapis.com/translate_a/single',
+  google_official_url: '',
   google_api_key: '',
   baidu_app_id: '',
   baidu_secret_key: '',
@@ -36,15 +38,19 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   const [activeSection, setActiveSection] = useState<(typeof sections)[number]['id']>('general');
   const [expandedEngine, setExpandedEngine] = useState<string | null>('baidu');
   const [settings, setSettings] = useState(defaultSettings);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const pendingSettingsRef = useRef<typeof settings | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    
     invoke<any>('get_settings').then((s) => {
       setSettings({
         source_lang: s.source_lang || defaultSettings.source_lang,
         target_lang: s.target_lang || defaultSettings.target_lang,
         engine: s.engine || defaultSettings.engine,
-        google_url: s.google_url || defaultSettings.google_url,
+        google_mirror_url: s.google_mirror_url || defaultSettings.google_mirror_url,
+        google_official_url: s.google_official_url || '',
         google_api_key: s.google_api_key || '',
         baidu_app_id: s.baidu_app_id || '',
         baidu_secret_key: s.baidu_secret_key || '',
@@ -54,17 +60,48 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         ollama_model: s.ollama_model || defaultSettings.ollama_model,
       });
     }).catch(console.error);
+
+    const unlisten = listen('theme-changed', async () => {
+      console.log('[SettingsModal] Received theme-changed event, syncing engine/lang...');
+      const s = await invoke<any>('get_settings');
+      console.log('[SettingsModal] Settings loaded:', { engine: s.engine, source_lang: s.source_lang, target_lang: s.target_lang });
+      setSettings(prev => ({
+        ...prev,
+        source_lang: s.source_lang || prev.source_lang,
+        target_lang: s.target_lang || prev.target_lang,
+        engine: s.engine || prev.engine,
+      }));
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
   }, [open]);
 
   const handleSettingsChange = async (updates: Partial<typeof settings>) => {
     const newSettings = { ...settings, ...updates };
     setSettings(newSettings);
-    try {
-      const current = await invoke<any>('get_settings');
-      await invoke('set_settings', { settings: { ...current, ...newSettings } });
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+    
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(saveTimeoutRef.current);
     }
+    
+    pendingSettingsRef.current = newSettings;
+    
+    const shouldSaveImmediately = 'source_lang' in updates || 'target_lang' in updates || 'engine' in updates;
+    const delay = shouldSaveImmediately ? 0 : 2000;
+    
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      if (pendingSettingsRef.current) {
+        try {
+          const current = await invoke<any>('get_settings');
+          await invoke('set_settings', { settings: { ...current, ...pendingSettingsRef.current } });
+          pendingSettingsRef.current = null;
+        } catch (error) {
+          console.error('Failed to save settings:', error);
+        }
+      }
+    }, delay);
   };
 
   const handleThemeChange = async (newTheme: typeof theme) => {
@@ -72,15 +109,17 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
     
     try {
       const current = await invoke<any>('get_settings');
-      await invoke('set_settings', {
-        settings: {
-          ...current,
-          theme_color: newTheme.themeColor,
-          bg_color: newTheme.bgColor,
-          text_color: newTheme.textColor,
-          transparency: newTheme.transparency,
-        },
-      });
+      console.log('[SettingsModal] Current settings from backend:', current);
+      const updatedSettings = {
+        ...current,
+        theme_color: newTheme.themeColor,
+        bg_color: newTheme.bgColor,
+        text_color: newTheme.textColor,
+        transparency: newTheme.transparency,
+      };
+      console.log('[SettingsModal] Saving settings:', updatedSettings);
+      await invoke('set_settings', { settings: updatedSettings });
+      console.log('[SettingsModal] Theme saved successfully');
     } catch (error) {
       console.error('Failed to save theme settings:', error);
     }
@@ -129,6 +168,19 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   }, [open, onOpenChange]);
 
   const handleClose = async () => {
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+    
+    if (pendingSettingsRef.current) {
+      try {
+        const current = await invoke<any>('get_settings');
+        await invoke('set_settings', { settings: { ...current, ...pendingSettingsRef.current } });
+      } catch (error) {
+        console.error('Failed to save settings on close:', error);
+      }
+    }
+    
     if (onOpenChange) {
       onOpenChange(false);
       return;
@@ -353,7 +405,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                     className="group relative w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
                   >
                     <span>谷歌翻译</span>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-16 top-2.5 whitespace-nowrap">默认使用谷歌翻译源URL</span>
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-16 top-2.5 whitespace-nowrap">优先使用镜像源，失败后回退到官方API</span>
                     {expandedEngine === 'google' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'google' && (
@@ -361,16 +413,25 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       <div className="engine-input-wrapper">
                         <input
                           type="text"
-                          placeholder="镜像 URL"
-                          value={settings.google_url}
-                          onChange={(e) => void handleSettingsChange({ google_url: e.target.value })}
+                          placeholder="镜像源 URL (如 translate.googleapis.com/translate_a/single)"
+                          value={settings.google_mirror_url}
+                          onChange={(e) => void handleSettingsChange({ google_mirror_url: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="官方 URL (可选，默认 translation.googleapis.com/language/translate/v2)"
+                          value={settings.google_official_url}
+                          onChange={(e) => void handleSettingsChange({ google_official_url: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="password"
-                          placeholder="API Key"
+                          placeholder="API Key (官方 API 必需)"
                           value={settings.google_api_key}
                           onChange={(e) => void handleSettingsChange({ google_api_key: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"

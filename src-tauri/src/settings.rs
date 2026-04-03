@@ -17,12 +17,17 @@ pub struct Settings {
     // Engine configs
     pub baidu_app_id: String,
     pub baidu_secret_key: String,
-    pub google_url: String,
+    #[serde(default)]
+    pub google_mirror_url: String,
+    #[serde(default)]
+    pub google_official_url: String,
     pub google_api_key: String,
     pub siliconflow_api_key: String,
     pub siliconflow_model: String,
     pub ollama_url: String,
     pub ollama_model: String,
+    #[serde(skip_serializing, default)]
+    pub google_url: Option<String>,
 }
 
 impl Default for Settings {
@@ -37,15 +42,16 @@ impl Default for Settings {
             text_color: "#ffffff".to_string(),
             transparency: 50,
             locale: "zh-CN".to_string(),
-            // Engine defaults
             baidu_app_id: String::new(),
             baidu_secret_key: String::new(),
-            google_url: String::new(),
+            google_mirror_url: String::new(),
+            google_official_url: String::new(),
             google_api_key: String::new(),
             siliconflow_api_key: String::new(),
             siliconflow_model: "deepseek-ai/DeepSeek-V3".to_string(),
             ollama_url: "http://localhost:11434".to_string(),
             ollama_model: "llama2".to_string(),
+            google_url: None,
         }
     }
 }
@@ -63,7 +69,15 @@ pub fn get_settings() -> Result<Settings, String> {
     let path = get_settings_path();
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        serde_json::from_str(&content).map_err(|e| e.to_string())
+        let mut settings: Settings = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+
+        if let Some(legacy_url) = settings.google_url.take() {
+            if settings.google_mirror_url.is_empty() {
+                settings.google_mirror_url = legacy_url;
+            }
+        }
+
+        Ok(settings)
     } else {
         Ok(Settings::default())
     }
@@ -75,7 +89,6 @@ pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), Str
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
 
-    // 发送全局事件通知所有窗口
     app.emit("theme-changed", ())
         .map_err(|e: tauri::Error| e.to_string())?;
 

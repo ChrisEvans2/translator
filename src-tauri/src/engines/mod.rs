@@ -21,6 +21,24 @@ pub enum EngineError {
     Parse(String),
 }
 
+impl std::fmt::Display for EngineError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EngineError::Network(msg) => write!(f, "网络错误: {}", msg),
+            EngineError::Auth(msg) => write!(f, "认证失败: {}", msg),
+            EngineError::RateLimit => write!(f, "请求频率超限，请稍后重试"),
+            EngineError::Timeout => write!(f, "请求超时，请检查网络连接"),
+            EngineError::Parse(msg) => {
+                if msg == "No translation result" {
+                    write!(f, "翻译失败：API 未返回结果。请检查 API 凭证是否已正确配置。")
+                } else {
+                    write!(f, "解析错误: {}", msg)
+                }
+            }
+        }
+    }
+}
+
 impl From<reqwest::Error> for EngineError {
     fn from(err: reqwest::Error) -> Self {
         if err.is_timeout() {

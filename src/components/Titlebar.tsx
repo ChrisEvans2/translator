@@ -103,7 +103,10 @@ export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, current
             {engines.map(engine => (
               <DropdownMenuItem 
                 key={engine.id}
-                onClick={() => onEngineChange(engine.id)}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onEngineChange(engine.id);
+                }}
               >
                 {engine.name}
               </DropdownMenuItem>

@@ -4,16 +4,60 @@ mod engines;
 
 use clipboard::spawn_clipboard_monitor;
 use settings::{get_settings, set_settings};
-use engines::TranslationResult;
+use engines::{TranslationResult, TranslationEngine, baidu::BaiduEngine, google::GoogleEngine, siliconflow::SiliconFlowEngine, ollama::OllamaEngine};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[tauri::command]
 async fn translate(text: String, from: String, to: String, engine: String) -> Result<TranslationResult, String> {
-    Ok(TranslationResult {
-        text: format!("[{}] {}", engine, text),
-        engine,
-        error: None,
-    })
+    let settings = get_settings()?;
+    
+    // 验证凭证是否已配置
+    let credential_error = match engine.as_str() {
+        "baidu" if settings.baidu_app_id.is_empty() || settings.baidu_secret_key.is_empty() => {
+            Some("百度翻译 API 凭证未配置。请在设置中填入 APP ID 和密钥。")
+        }
+        "google" if settings.google_mirror_url.is_empty() && settings.google_official_url.is_empty() && settings.google_api_key.is_empty() => {
+            Some("Google 翻译配置未完成。请在设置中至少填入镜像源 URL、官方 URL 或 API Key 之一。")
+        }
+        "siliconflow" if settings.siliconflow_api_key.is_empty() => {
+            Some("SiliconFlow API Key 未配置。请在设置中填入 API Key。")
+        }
+        "ollama" if settings.ollama_url.is_empty() => {
+            Some("Ollama URL 未配置。请在设置中填入服务地址。")
+        }
+        _ => None,
+    };
+    
+    if let Some(error_msg) = credential_error {
+        return Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some(error_msg.to_string()),
+        });
+    }
+    
+    let translator: Box<dyn TranslationEngine> = match engine.as_str() {
+        "baidu" => Box::new(BaiduEngine::new(settings.baidu_app_id, settings.baidu_secret_key)),
+        "google" => Box::new(GoogleEngine::new(settings.google_mirror_url, settings.google_official_url, settings.google_api_key)),
+        "siliconflow" => Box::new(SiliconFlowEngine::new(settings.siliconflow_api_key, settings.siliconflow_model)),
+        "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
+        _ => return Err(format!("Unknown engine: {}", engine)),
+    };
+    
+    let from_lang = if from == "auto" { "" } else { &from };
+    
+    match translator.translate(&text, from_lang, &to).await {
+        Ok(translated) => Ok(TranslationResult {
+            text: translated,
+            engine: engine.clone(),
+            error: None,
+        }),
+        Err(e) => Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some(e.to_string()),
+        }),
+    }
 }
 
 #[tauri::command]

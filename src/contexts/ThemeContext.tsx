@@ -49,7 +49,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unlisten = listen('theme-changed', () => {
-      loadTheme().then(setTheme).catch(console.error);
+      console.log('[ThemeContext] Received theme-changed event, reloading theme...');
+      loadTheme().then(newTheme => {
+        console.log('[ThemeContext] Theme loaded:', newTheme);
+        setTheme(newTheme);
+      }).catch(console.error);
     });
 
     return () => {
