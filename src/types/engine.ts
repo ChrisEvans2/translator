@@ -4,7 +4,7 @@ export interface TranslationResult {
   error?: string;
 }
 
-export type Engine = 'baidu' | 'google' | 'siliconflow' | 'ollama';
+export type Engine = 'baidu' | 'google' | 'llmapi' | 'ollama';
 
 export interface EngineConfig {
   baidu: {
@@ -15,7 +15,7 @@ export interface EngineConfig {
     url: string;
     apiKey: string;
   };
-  siliconflow: {
+  llmapi: {
     apiKey: string;
     model: string;
   };

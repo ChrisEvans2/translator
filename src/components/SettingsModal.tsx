@@ -21,8 +21,8 @@ const defaultSettings = {
   google_api_key: '',
   baidu_app_id: '',
   baidu_secret_key: '',
-  siliconflow_api_key: '',
-  siliconflow_model: 'deepseek-ai/DeepSeek-V3',
+  llmapi_api_key: '',
+  llmapi_model: 'deepseek-ai/DeepSeek-V3',
   ollama_url: 'http://localhost:11434',
   ollama_model: 'llama2',
 };
@@ -54,8 +54,8 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         google_api_key: s.google_api_key || '',
         baidu_app_id: s.baidu_app_id || '',
         baidu_secret_key: s.baidu_secret_key || '',
-        siliconflow_api_key: s.siliconflow_api_key || '',
-        siliconflow_model: s.siliconflow_model || defaultSettings.siliconflow_model,
+        llmapi_api_key: s.llmapi_api_key || '',
+        llmapi_model: s.llmapi_model || defaultSettings.llmapi_model,
         ollama_url: s.ollama_url || defaultSettings.ollama_url,
         ollama_model: s.ollama_model || defaultSettings.ollama_model,
       });
@@ -287,7 +287,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   >
                     <option value="google">谷歌翻译</option>
                     <option value="baidu">百度翻译</option>
-                    <option value="siliconflow">硅基流动</option>
+                    <option value="llmapi">大模型API</option>
                     <option value="ollama">Ollama</option>
                   </select>
                 </div>
@@ -360,10 +360,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'baidu' ? null : 'baidu')}
-                    className="group relative w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
                   >
                     <span>百度翻译</span>
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-[#616161] text-white text-xs px-2 py-1 rounded absolute left-20 top-2.5 whitespace-nowrap">默认使用百度翻译开发平台API</span>
                     {expandedEngine === 'baidu' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'baidu' && (
@@ -371,7 +370,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       <div className="engine-input-wrapper">
                         <input
                           type="text"
-                          placeholder="APP ID"
+                          placeholder="APP ID（通用翻译API - fanyi-api.baidu.com → 开发者中心 → 开发者信息）"
                           value={settings.baidu_app_id}
                           onChange={(e) => void handleSettingsChange({ baidu_app_id: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
@@ -380,16 +379,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       <div className="engine-input-wrapper">
                         <input
                           type="password"
-                          placeholder="Secret Key"
+                          placeholder="密钥（通用翻译API - fanyi-api.baidu.com → 开发者中心 → 开发者信息）"
                           value={settings.baidu_secret_key}
                           onChange={(e) => void handleSettingsChange({ baidu_secret_key: e.target.value })}
-                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
-                        />
-                      </div>
-                      <div className="engine-input-wrapper">
-                        <input
-                          type="text"
-                          placeholder="翻译源 URL"
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>
@@ -441,33 +433,33 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                   )}
                 </div>
 
-                {/* 硅基流动 */}
+                {/* 大模型API */}
                 <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
-                    onClick={() => setExpandedEngine(expandedEngine === 'siliconflow' ? null : 'siliconflow')}
+                    onClick={() => setExpandedEngine(expandedEngine === 'llmapi' ? null : 'llmapi')}
                     className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
                   >
-                    <span>硅基流动</span>
-                    {expandedEngine === 'siliconflow' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <span>大模型API</span>
+                    {expandedEngine === 'llmapi' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
-                  {expandedEngine === 'siliconflow' && (
+                  {expandedEngine === 'llmapi' && (
                     <div className="space-y-2 p-3 pt-0">
                       <div className="engine-input-wrapper">
                         <input
                           type="password"
                           placeholder="API Key"
-                          value={settings.siliconflow_api_key}
-                          onChange={(e) => void handleSettingsChange({ siliconflow_api_key: e.target.value })}
+                          value={settings.llmapi_api_key}
+                          onChange={(e) => void handleSettingsChange({ llmapi_api_key: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="text"
-                          placeholder="模型 (默认 deepseek-ai/DeepSeek-V3)"
-                          value={settings.siliconflow_model}
-                          onChange={(e) => void handleSettingsChange({ siliconflow_model: e.target.value })}
+                          placeholder="使用模型"
+                          value={settings.llmapi_model}
+                          onChange={(e) => void handleSettingsChange({ llmapi_model: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>

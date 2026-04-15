@@ -45,15 +45,23 @@ impl super::TranslationEngine for OllamaEngine {
         "ollama"
     }
 
-    async fn translate(&self, text: &str, _from: &str, to: &str) -> Result<String, super::EngineError> {
+    async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, super::EngineError> {
         let client = reqwest::Client::new();
+        let to_name = super::lang_code_to_name(to);
+        let from_name = super::lang_code_to_name(from);
         
+        let system_prompt = if from == "auto" {
+            format!("You are a translator. Translate the following text to {}. Preserve all LaTeX formulas exactly as they appear, including their $ or $$ delimiters. Output only the translated text without any explanation.", to_name)
+        } else {
+            format!("You are a translator. Translate the following text from {} to {}. Preserve all LaTeX formulas exactly as they appear, including their $ or $$ delimiters. Output only the translated text without any explanation.", from_name, to_name)
+        };
+
         let request = OllamaRequest {
             model: self.model.clone(),
             messages: vec![
                 OllamaMessage {
                     role: "system".to_string(),
-                    content: format!("Translate to {}. Keep LaTeX formulas unchanged.", to),
+                    content: system_prompt,
                 },
                 OllamaMessage {
                     role: "user".to_string(),

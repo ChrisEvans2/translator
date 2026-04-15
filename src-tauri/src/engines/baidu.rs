@@ -1,6 +1,4 @@
-use async_trait::async_trait;
 use serde::Deserialize;
-use md5;
 
 use super::{EngineError, TranslationEngine};
 
@@ -13,11 +11,13 @@ pub struct BaiduEngine {
 #[derive(Debug, Deserialize)]
 struct BaiduResponse {
     trans_result: Option<Vec<BaiduTransResult>>,
-    error_code: Option<i32>,
+    error_code: Option<String>,
+    error_msg: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct BaiduTransResult {
+    src: String,
     dst: String,
 }
 
@@ -27,11 +27,20 @@ impl BaiduEngine {
     }
 
     fn generate_sign(&self, text: &str, salt: &str) -> String {
+        let app_id = self.app_id.trim();
+        let secret_key = self.secret_key.trim();
         use md5::{Md5, Digest};
-        let input = format!("{}{}{}{}", self.app_id, text, salt, self.secret_key);
+        let input = format!("{}{}{}{}", app_id, text, salt, secret_key);
+        eprintln!("[Baidu DEBUG] app_id: '{}'", app_id);
+        eprintln!("[Baidu DEBUG] secret_key: '{}'", secret_key);
+        eprintln!("[Baidu DEBUG] text (q): '{}'", text);
+        eprintln!("[Baidu DEBUG] salt: '{}'", salt);
+        eprintln!("[Baidu DEBUG] sign input: '{}'", input);
         let mut hasher = Md5::new();
         hasher.update(input.as_bytes());
-        format!("{:x}", hasher.finalize())
+        let sign = hex::encode(hasher.finalize());
+        eprintln!("[Baidu DEBUG] sign: '{}'", sign);
+        sign
     }
 }
 
@@ -42,40 +51,53 @@ impl TranslationEngine for BaiduEngine {
     }
 
     async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, EngineError> {
-        let salt = format!("{}", std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis());
-        
+        let salt = rand::random::<u16>().to_string();
         let sign = self.generate_sign(text, &salt);
-        
+
         let client = reqwest::Client::new();
-        let params = [
-            ("q", text),
-            ("from", from),
-            ("to", to),
-            ("appid", &self.app_id),
-            ("salt", &salt),
-            ("sign", &sign),
-        ];
-        
         let response = client
-            .post("https://fanyi.baidu.com/api/trans/vip/translate")
-            .form(&params)
+            .get("https://api.fanyi.baidu.com/api/trans/vip/translate")
+            .query(&[
+                ("q", text),
+                ("from", from),
+                ("to", to),
+                ("appid", &self.app_id),
+                ("salt", &salt),
+                ("sign", &sign),
+            ])
             .send()
             .await
-            .map_err(|e| EngineError::Network(e.to_string()))?;
-            
-        let result: BaiduResponse = response
-            .json()
+            .map_err(|e| {
+                let detail = e.to_string();
+                if e.is_timeout() {
+                    EngineError::Network(format!("请求超时: {}", detail))
+                } else if e.is_connect() {
+                    EngineError::Network(format!("连接失败: {} (请检查网络/代理设置)", detail))
+                } else if e.is_request() {
+                    EngineError::Network(format!("请求错误: {}", detail))
+                } else {
+                    EngineError::Network(format!("请求失败: {}", detail))
+                }
+            })?;
+
+        let status = response.status();
+        let body = response
+            .text()
             .await
-            .map_err(|e| EngineError::Parse(e.to_string()))?;
+            .map_err(|e| EngineError::Parse(format!("Failed to read response body: {}", e)))?;
+
+        if body.is_empty() {
+            return Err(EngineError::Network(format!("百度翻译 API 返回空响应 (HTTP {})", status)));
+        }
+
+        let result: BaiduResponse = serde_json::from_str(&body)
+            .map_err(|e| EngineError::Parse(format!("error decoding response body: {}\nRaw: {}", e, body.chars().take(200).collect::<String>())))?;
             
         if let Some(error_code) = result.error_code {
-            match error_code {
-                54003 => return Err(EngineError::RateLimit),
-                54001 | 54005 | 58000 => return Err(EngineError::Auth(format!("API error: {}", error_code))),
-                _ => return Err(EngineError::Network(format!("API error: {}", error_code))),
+            match error_code.as_str() {
+                "54003" => return Err(EngineError::RateLimit),
+                "54001" | "54005" | "58000" => return Err(EngineError::Auth(format!("签名错误: {}", error_code))),
+                _ => return Err(EngineError::Network(format!("API error: {}{}", error_code, result.error_msg.map(|m| format!(" - {}", m)).unwrap_or_default()))),
             }
         }
         
@@ -83,5 +105,17 @@ impl TranslationEngine for BaiduEngine {
             .and_then(|r| r.into_iter().next())
             .map(|t| t.dst)
             .ok_or_else(|| EngineError::Parse("No translation result".to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_baidu_sign_official_example() {
+        let engine = BaiduEngine::new("2015063000000001".to_string(), "12345678".to_string());
+        let sign = engine.generate_sign("apple", "1435660288");
+        assert_eq!(sign, "f89f9594663708c1605f3d736d01d2d4");
     }
 }

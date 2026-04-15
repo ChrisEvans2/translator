@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -23,8 +23,8 @@ interface Settings {
   google_mirror_url: string;
   google_official_url: string;
   google_api_key: string;
-  siliconflow_api_key: string;
-  siliconflow_model: string;
+  llmapi_api_key: string;
+  llmapi_model: string;
   ollama_url: string;
   ollama_model: string;
 }
@@ -34,7 +34,13 @@ function TranslationApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [settings, setSettings] = useState<Settings | null>(null);
+  const settingsRef = useRef<Settings | null>(null);
   const clipboardText = useClipboard();
+
+  // Keep ref in sync with settings state
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     invoke<Settings>('get_settings').then(setSettings).catch(console.error);
@@ -52,26 +58,35 @@ function TranslationApp() {
   }, []);
 
   useEffect(() => {
-    if (!clipboardText || !settings?.clipboard_enabled || isLoading) return;
+    if (!clipboardText) return;
 
     const translate = async () => {
+      const currentSettings = settingsRef.current;
+      if (!currentSettings || !currentSettings.clipboard_enabled) return;
+      if (isLoading) return;
+
       setIsLoading(true);
       setError(undefined);
       
       try {
-        const { plainText, segments } = extractLatex(clipboardText);
+        // LLM engines handle LaTeX natively via prompt instructions.
+        // Non-LLM engines need placeholder extraction to protect LaTeX from translation.
+        const isLLMEngine = currentSettings.engine === 'llmapi' || currentSettings.engine === 'ollama';
+        const { plainText, segments } = isLLMEngine
+          ? { plainText: clipboardText, segments: [] }
+          : extractLatex(clipboardText);
         
         const result = await invoke<{ text: string; error?: string }>('translate', {
           text: plainText,
-          from: settings.source_lang,
-          to: settings.target_lang,
-          engine: settings.engine,
+          from: currentSettings.source_lang,
+          to: currentSettings.target_lang,
+          engine: currentSettings.engine,
         });
 
         if (result.error) {
           setError(result.error);
         } else {
-          const finalText = reinsertLatex(result.text, segments);
+          const finalText = segments.length > 0 ? reinsertLatex(result.text, segments) : result.text;
           setTranslatedText(finalText);
         }
       } catch (e) {
@@ -82,7 +97,7 @@ function TranslationApp() {
     };
 
     translate();
-  }, [clipboardText, settings]);
+  }, [clipboardText, settings?.engine, settings?.source_lang, settings?.target_lang]);
 
   const handleCopy = async () => {
     if (translatedText) {

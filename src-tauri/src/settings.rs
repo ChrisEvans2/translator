@@ -15,15 +15,19 @@ pub struct Settings {
     pub transparency: u8,
     pub locale: String,
     // Engine configs
+    #[serde(default)]
     pub baidu_app_id: String,
+    #[serde(default)]
     pub baidu_secret_key: String,
     #[serde(default)]
     pub google_mirror_url: String,
     #[serde(default)]
     pub google_official_url: String,
     pub google_api_key: String,
-    pub siliconflow_api_key: String,
-    pub siliconflow_model: String,
+    #[serde(default)]
+    pub llmapi_api_key: String,
+    #[serde(default)]
+    pub llmapi_model: String,
     pub ollama_url: String,
     pub ollama_model: String,
     #[serde(skip_serializing, default)]
@@ -47,8 +51,8 @@ impl Default for Settings {
             google_mirror_url: String::new(),
             google_official_url: String::new(),
             google_api_key: String::new(),
-            siliconflow_api_key: String::new(),
-            siliconflow_model: "deepseek-ai/DeepSeek-V3".to_string(),
+            llmapi_api_key: String::new(),
+            llmapi_model: "deepseek-ai/DeepSeek-V3".to_string(),
             ollama_url: "http://localhost:11434".to_string(),
             ollama_model: "llama2".to_string(),
             google_url: None,

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod baidu;
 pub mod google;
-pub mod siliconflow;
+pub mod llmapi;
 pub mod ollama;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +46,17 @@ impl From<reqwest::Error> for EngineError {
         } else {
             EngineError::Network(err.to_string())
         }
+    }
+}
+
+pub fn lang_code_to_name(code: &str) -> &str {
+    match code {
+        "zh" => "Chinese",
+        "en" => "English",
+        "ja" => "Japanese",
+        "ko" => "Korean",
+        "auto" => "auto-detect",
+        other => other,
     }
 }
 

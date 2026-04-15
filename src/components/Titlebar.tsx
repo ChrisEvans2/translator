@@ -16,7 +16,7 @@ interface TitlebarProps {
 const engines = [
   { id: 'baidu', name: '百度翻译' },
   { id: 'google', name: '谷歌翻译' },
-  { id: 'siliconflow', name: '硅基流动' },
+  { id: 'llmapi', name: '大模型API' },
   { id: 'ollama', name: 'Ollama' },
 ];
 
@@ -99,7 +99,11 @@ export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, current
               <ChevronDown className="h-3 w-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent
+            align="end"
+            className="border-white/10"
+            style={{ backgroundColor: titlebarBgColor, color: 'white' }}
+          >
             {engines.map(engine => (
               <DropdownMenuItem 
                 key={engine.id}
@@ -107,6 +111,7 @@ export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, current
                   e.preventDefault();
                   onEngineChange(engine.id);
                 }}
+                className="focus:bg-white/20 focus:text-white"
               >
                 {engine.name}
               </DropdownMenuItem>

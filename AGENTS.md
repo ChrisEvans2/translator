@@ -20,9 +20,12 @@ pnpm tauri build --debug    # Build debug version for testing
 
 ```bash
 pnpm tsc --noEmit           # TypeScript type checking only
+cargo check --manifest-path src-tauri/Cargo.toml   # Rust type checking
+cargo test --manifest-path src-tauri/Cargo.toml    # Rust unit tests
+cargo test --manifest-path src-tauri/Cargo.toml baidu   # Run single test
 ```
 
-**No test framework configured** — verify changes manually via `pnpm tauri dev`.
+**No frontend test framework configured** — verify changes manually via `pnpm tauri dev`.
 
 ## Architecture
 
@@ -44,7 +47,7 @@ src/                        # React frontend
 src-tauri/src/              # Rust backend
 ├── settings.rs             # Settings persistence + events
 ├── clipboard.rs            # Clipboard monitoring
-├── engines/                # Translation engines (baidu, google, ollama, siliconflow)
+├── engines/                # Translation engines (baidu, google, ollama, llmapi)
 └── lib.rs                  # Tauri app setup
 ```
 
@@ -62,6 +65,13 @@ src-tauri/src/              # Rust backend
 - **No `any`** — use proper types or `unknown` with type guards
 - **No `@ts-ignore` / `@ts-expect-error`** — fix the underlying type issue
 
+### Rust
+
+- **No `any` equivalent** — use proper types or `Result<T, E>` with descriptive errors
+- **No `#[allow(dead_code)]`** without justification — remove unused code
+- **Error handling**: Use `Result<T, EngineError>` pattern, never `unwrap()` on external I/O
+- **Async**: Use `async_trait` for trait methods, `tokio` for runtime
+
 ### Naming Conventions
 
 | Type | Convention | Example |
@@ -72,14 +82,23 @@ src-tauri/src/              # Rust backend
 | Interfaces | PascalCase | `interface ThemeSettings { ... }` |
 | Constants | SCREAMING_SNAKE_CASE | `const LATEX_INLINE_REGEX = ...` |
 | Engine types | Discriminated unions | `type Engine = 'baidu' \| 'google'` |
+| Rust structs | PascalCase | `struct BaiduEngine` |
+| Rust functions | snake_case | `fn generate_sign()` |
+| Rust modules | snake_case files | `baidu.rs`, `settings.rs` |
 
 ### Import Order
 
+**TypeScript:**
 1. React/standard libraries
 2. Tauri APIs (`@tauri-apps/api/*`)
 3. Local components (`@/components/*`)
 4. Contexts/hooks (`@/contexts/*`, `@/hooks/*`)
 5. Utils/libs (`@/lib/*`)
+
+**Rust:**
+1. Standard library (`use std::...`)
+2. External crates (`use serde::...`, `use reqwest::...`)
+3. Local modules (`use super::...`, `use crate::...`)
 
 ### Styling
 
@@ -132,6 +151,29 @@ useEffect(() => {
 - Keep components focused on one responsibility
 - Extract shared UI to `src/components/ui/`
 - Use composition over prop drilling
+
+## Translation Engine Implementation Notes
+
+### Baidu Translation API
+
+- **API Type**: Standard Translation API (通用翻译API)
+- **Domain**: `https://api.fanyi.baidu.com/api/trans/vip/translate`
+- **Method**: GET request with query parameters
+- **Authentication**: APP ID + Secret Key (MD5 signature)
+- **Signature**: `md5(appid + q + salt + secret_key)` where `q` is raw text (NOT URL encoded)
+- **Salt**: Random integer (use `rand::random::<u16>()`)
+- **URL encoding**: Only `q` parameter needs URL encoding in the final URL, NOT in signature
+- **Error codes**: `54001` = signature error, `54003` = rate limited, `52001` = timeout
+- **Credentials**: Obtain from fanyi-api.baidu.com → 开发者中心 → 开发者信息
+
+### Adding New Engine
+
+1. Create `src-tauri/src/engines/new_engine.rs`
+2. Implement `TranslationEngine` trait from `mod.rs`
+3. Add engine variant to `EngineError` enum if needed
+4. Register in `lib.rs` translate command
+5. Add settings fields in `settings.rs` Settings struct
+6. Add UI in `SettingsModal.tsx` engines section
 
 ## Documentation
 

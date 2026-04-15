@@ -2,39 +2,39 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
-pub struct SiliconFlowEngine {
+pub struct LLMApiEngine {
     pub api_key: String,
     pub model: String,
 }
 
 #[derive(Debug, Serialize)]
-struct SiliconFlowRequest {
+struct LLMApiRequest {
     model: String,
-    messages: Vec<SiliconFlowMessage>,
+    messages: Vec<LLMApiMessage>,
 }
 
 #[derive(Debug, Serialize)]
-struct SiliconFlowMessage {
+struct LLMApiMessage {
     role: String,
     content: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct SiliconFlowResponse {
-    choices: Option<Vec<SiliconFlowChoice>>,
+struct LLMApiResponse {
+    choices: Option<Vec<LLMApiChoice>>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SiliconFlowChoice {
-    message: Option<SiliconFlowMessageResponse>,
+struct LLMApiChoice {
+    message: Option<LLMApiMessageResponse>,
 }
 
 #[derive(Debug, Deserialize)]
-struct SiliconFlowMessageResponse {
+struct LLMApiMessageResponse {
     content: String,
 }
 
-impl SiliconFlowEngine {
+impl LLMApiEngine {
     pub fn new(api_key: String, model: String) -> Self {
         Self { 
             api_key, 
@@ -44,22 +44,30 @@ impl SiliconFlowEngine {
 }
 
 #[async_trait::async_trait]
-impl super::TranslationEngine for SiliconFlowEngine {
+impl super::TranslationEngine for LLMApiEngine {
     fn name(&self) -> &'static str {
-        "siliconflow"
+        "llmapi"
     }
 
-    async fn translate(&self, text: &str, _from: &str, to: &str) -> Result<String, super::EngineError> {
+    async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, super::EngineError> {
         let client = reqwest::Client::new();
+        let to_name = super::lang_code_to_name(to);
+        let from_name = super::lang_code_to_name(from);
         
-        let request = SiliconFlowRequest {
+        let system_prompt = if from == "auto" {
+            format!("You are a translator. Translate the following text to {}. Preserve all LaTeX formulas exactly as they appear, including their $ or $$ delimiters. Output only the translated text without any explanation.", to_name)
+        } else {
+            format!("You are a translator. Translate the following text from {} to {}. Preserve all LaTeX formulas exactly as they appear, including their $ or $$ delimiters. Output only the translated text without any explanation.", from_name, to_name)
+        };
+
+        let request = LLMApiRequest {
             model: self.model.clone(),
             messages: vec![
-                SiliconFlowMessage {
+                LLMApiMessage {
                     role: "system".to_string(),
-                    content: format!("Translate to {}. Keep LaTeX formulas unchanged.", to),
+                    content: system_prompt,
                 },
-                SiliconFlowMessage {
+                LLMApiMessage {
                     role: "user".to_string(),
                     content: text.to_string(),
                 },
@@ -75,7 +83,7 @@ impl super::TranslationEngine for SiliconFlowEngine {
             .await
             .map_err(|e| super::EngineError::Network(e.to_string()))?;
             
-        let result: SiliconFlowResponse = response
+        let result: LLMApiResponse = response
             .json()
             .await
             .map_err(|e| super::EngineError::Parse(e.to_string()))?;
