@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Agent / workflow tooling (not project source)
+.opencode/
+.sisyphus/
+
+# Internal docs / planning files
+docs/
+images/
+Feature.md
+WORKFLOW.md
+AGENTS.md
+CHANGELOG.md
+
+# Tauri build artifacts
+src-tauri/target/
+
+# Misc
+components.json
