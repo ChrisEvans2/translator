@@ -61,6 +61,51 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
 }
 
 #[tauri::command]
+async fn translate_image(image_base64: String, to: String, engine: String) -> Result<TranslationResult, String> {
+    let settings = get_settings()?;
+    
+    if !settings.image_translation_enabled {
+        return Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some("图片翻译未开启。请在设置中开启。".to_string()),
+        });
+    }
+
+    let to_name = engines::lang_code_to_name(&to);
+    let prompt = format!("Translate the text in this image to {}. Output only the translated text without any explanation.", to_name);
+
+    let translator: Box<dyn TranslationEngine> = match engine.as_str() {
+        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_model)),
+        "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
+        _ => return Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some("图片翻译仅支持大模型API和Ollama引擎。".to_string()),
+        }),
+    };
+
+    let vlm_model = match engine.as_str() {
+        "llmapi" => &settings.llmapi_vlm_model,
+        "ollama" => &settings.ollama_vlm_model,
+        _ => "",
+    };
+
+    match translator.translate_image(&image_base64, &prompt, vlm_model).await {
+        Ok(translated) => Ok(TranslationResult {
+            text: translated,
+            engine: engine.clone(),
+            error: None,
+        }),
+        Err(e) => Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+#[tauri::command]
 fn start_dragging(window: tauri::WebviewWindow) -> Result<(), String> {
     window
         .start_dragging()
@@ -79,6 +124,23 @@ fn close_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window
         .close()
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_window_always_on_top(window: tauri::WebviewWindow, always_on_top: bool) -> Result<(), String> {
+    window
+        .set_always_on_top(always_on_top)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.show().map_err(|e| e.to_string())?;
+        window.unminimize().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -106,7 +168,6 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     .center()
     .inner_size(width, height)
     .min_inner_size(min_width, min_height)
-    .always_on_top(true)
     .build()
     .map_err(|e| e.to_string())?;
 
@@ -123,7 +184,8 @@ pub fn run() {
             spawn_clipboard_monitor(app.handle().clone());
             
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_always_on_top(true);
+                let settings = get_settings().unwrap_or_default();
+                let _ = window.set_always_on_top(settings.always_on_top);
             }
             
             Ok(())
@@ -134,10 +196,13 @@ pub fn run() {
             get_settings,
             set_settings,
             translate,
+            translate_image,
             open_settings_window,
             start_dragging,
             minimize_window,
-            close_window
+            close_window,
+            set_window_always_on_top,
+            show_main_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -64,4 +64,7 @@ pub fn lang_code_to_name(code: &str) -> &str {
 pub trait TranslationEngine: Send + Sync {
     fn name(&self) -> &'static str;
     async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, EngineError>;
+    async fn translate_image(&self, _image_base64: &str, _prompt: &str, _vlm_model: &str) -> Result<String, EngineError> {
+        Err(EngineError::Network("Image translation not supported for this engine".to_string()))
+    }
 }

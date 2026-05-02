@@ -9,12 +9,13 @@ pub struct Settings {
     pub target_lang: String,
     pub engine: String,
     pub clipboard_enabled: bool,
+    #[serde(default)]
+    pub image_translation_enabled: bool,
     pub theme_color: String,
     pub bg_color: String,
     pub text_color: String,
     pub transparency: u8,
     pub locale: String,
-    // Engine configs
     #[serde(default)]
     pub baidu_app_id: String,
     #[serde(default)]
@@ -28,10 +29,22 @@ pub struct Settings {
     pub llmapi_api_key: String,
     #[serde(default)]
     pub llmapi_model: String,
+    #[serde(default)]
+    pub llmapi_vlm_model: String,
     pub ollama_url: String,
     pub ollama_model: String,
+    #[serde(default)]
+    pub ollama_vlm_model: String,
+    #[serde(default = "default_true")]
+    pub always_on_top: bool,
+    #[serde(default = "default_true")]
+    pub auto_show: bool,
     #[serde(skip_serializing, default)]
     pub google_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for Settings {
@@ -41,6 +54,7 @@ impl Default for Settings {
             target_lang: "zh".to_string(),
             engine: "baidu".to_string(),
             clipboard_enabled: true,
+            image_translation_enabled: false,
             theme_color: "#426666".to_string(),
             bg_color: "#3f3f3f".to_string(),
             text_color: "#ffffff".to_string(),
@@ -53,18 +67,27 @@ impl Default for Settings {
             google_api_key: String::new(),
             llmapi_api_key: String::new(),
             llmapi_model: "deepseek-ai/DeepSeek-V3".to_string(),
+            llmapi_vlm_model: String::new(),
             ollama_url: "http://localhost:11434".to_string(),
             ollama_model: "llama2".to_string(),
+            ollama_vlm_model: String::new(),
+            always_on_top: true,
+            auto_show: true,
             google_url: None,
         }
     }
 }
 
 fn get_settings_path() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("translate_app.json")
+}
+
+fn get_old_settings_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("translate_app");
-    fs::create_dir_all(&config_dir).ok();
     config_dir.join("settings.json")
 }
 
@@ -83,7 +106,26 @@ pub fn get_settings() -> Result<Settings, String> {
 
         Ok(settings)
     } else {
-        Ok(Settings::default())
+        let old_path = get_old_settings_path();
+        if old_path.exists() {
+            let content = fs::read_to_string(&old_path).map_err(|e| e.to_string())?;
+            let mut settings: Settings =
+                serde_json::from_str(&content).map_err(|e| e.to_string())?;
+
+            if let Some(legacy_url) = settings.google_url.take() {
+                if settings.google_mirror_url.is_empty() {
+                    settings.google_mirror_url = legacy_url;
+                }
+            }
+
+            let _ = fs::rename(&old_path, &path);
+            Ok(settings)
+        } else {
+            let settings = Settings::default();
+            let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+            fs::write(&path, content).map_err(|e| e.to_string())?;
+            Ok(settings)
+        }
     }
 }
 

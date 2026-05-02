@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct LLMApiEngine {
@@ -16,7 +17,21 @@ struct LLMApiRequest {
 #[derive(Debug, Serialize)]
 struct LLMApiMessage {
     role: String,
-    content: String,
+    content: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "type")]
+enum LLMApiContentPart {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image_url")]
+    ImageUrl { image_url: LLMApiImageUrl },
+}
+
+#[derive(Debug, Serialize)]
+struct LLMApiImageUrl {
+    url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,7 +65,10 @@ impl super::TranslationEngine for LLMApiEngine {
     }
 
     async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, super::EngineError> {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
         let to_name = super::lang_code_to_name(to);
         let from_name = super::lang_code_to_name(from);
         
@@ -65,11 +83,11 @@ impl super::TranslationEngine for LLMApiEngine {
             messages: vec![
                 LLMApiMessage {
                     role: "system".to_string(),
-                    content: system_prompt,
+                    content: serde_json::json!(system_prompt),
                 },
                 LLMApiMessage {
                     role: "user".to_string(),
-                    content: text.to_string(),
+                    content: serde_json::json!(text),
                 },
             ],
         };
@@ -88,6 +106,54 @@ impl super::TranslationEngine for LLMApiEngine {
             .await
             .map_err(|e| super::EngineError::Parse(e.to_string()))?;
             
+        result.choices
+            .and_then(|c| c.into_iter().next())
+            .and_then(|c| c.message)
+            .map(|m| m.content)
+            .ok_or_else(|| super::EngineError::Parse("No translation result".to_string()))
+    }
+
+    async fn translate_image(&self, image_base64: &str, prompt: &str, vlm_model: &str) -> Result<String, super::EngineError> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
+
+        let model = if vlm_model.is_empty() { &self.model } else { vlm_model };
+
+        let content = vec![
+            LLMApiContentPart::Text { text: prompt.to_string() },
+            LLMApiContentPart::ImageUrl {
+                image_url: LLMApiImageUrl {
+                    url: format!("data:image/png;base64,{}", image_base64),
+                },
+            },
+        ];
+
+        let request = LLMApiRequest {
+            model: model.to_string(),
+            messages: vec![
+                LLMApiMessage {
+                    role: "user".to_string(),
+                    content: serde_json::to_value(content).map_err(|e| super::EngineError::Parse(e.to_string()))?,
+                },
+            ],
+        };
+
+        let response = client
+            .post("https://api.siliconflow.cn/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
+
+        let result: LLMApiResponse = response
+            .json()
+            .await
+            .map_err(|e| super::EngineError::Parse(e.to_string()))?;
+
         result.choices
             .and_then(|c| c.into_iter().next())
             .and_then(|c| c.message)
