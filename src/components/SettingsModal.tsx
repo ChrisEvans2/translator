@@ -16,6 +16,9 @@ const defaultSettings = {
   source_lang: 'auto',
   target_lang: 'zh',
   engine: 'google',
+  image_translation_enabled: false,
+  always_on_top: true,
+  auto_show: true,
   google_mirror_url: 'https://translate.googleapis.com/translate_a/single',
   google_official_url: '',
   google_api_key: '',
@@ -23,8 +26,10 @@ const defaultSettings = {
   baidu_secret_key: '',
   llmapi_api_key: '',
   llmapi_model: 'deepseek-ai/DeepSeek-V3',
+  llmapi_vlm_model: '',
   ollama_url: 'http://localhost:11434',
   ollama_model: 'llama2',
+  ollama_vlm_model: '',
 };
 
 export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps) {
@@ -40,6 +45,22 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   const [settings, setSettings] = useState(defaultSettings);
   const saveTimeoutRef = useRef<number | null>(null);
   const pendingSettingsRef = useRef<typeof settings | null>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({ top: 8, height: 36 });
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!asideRef.current) return;
+    const activeIndex = sections.findIndex(s => s.id === activeSection);
+    const buttons = asideRef.current.querySelectorAll('button');
+    const activeButton = buttons[activeIndex];
+    if (activeButton) {
+      setIndicatorStyle({
+        top: activeButton.offsetTop,
+        height: activeButton.offsetHeight
+      });
+    }
+  }, [activeSection, sections]);
 
   useEffect(() => {
     if (!open) return;
@@ -49,6 +70,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         source_lang: s.source_lang || defaultSettings.source_lang,
         target_lang: s.target_lang || defaultSettings.target_lang,
         engine: s.engine || defaultSettings.engine,
+        image_translation_enabled: s.image_translation_enabled ?? defaultSettings.image_translation_enabled,
+        always_on_top: s.always_on_top ?? defaultSettings.always_on_top,
+        auto_show: s.auto_show ?? defaultSettings.auto_show,
         google_mirror_url: s.google_mirror_url || defaultSettings.google_mirror_url,
         google_official_url: s.google_official_url || '',
         google_api_key: s.google_api_key || '',
@@ -56,8 +80,10 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         baidu_secret_key: s.baidu_secret_key || '',
         llmapi_api_key: s.llmapi_api_key || '',
         llmapi_model: s.llmapi_model || defaultSettings.llmapi_model,
+        llmapi_vlm_model: s.llmapi_vlm_model || '',
         ollama_url: s.ollama_url || defaultSettings.ollama_url,
         ollama_model: s.ollama_model || defaultSettings.ollama_model,
+        ollama_vlm_model: s.ollama_vlm_model || '',
       });
     }).catch(console.error);
 
@@ -88,7 +114,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
     
     pendingSettingsRef.current = newSettings;
     
-    const shouldSaveImmediately = 'source_lang' in updates || 'target_lang' in updates || 'engine' in updates;
+    const shouldSaveImmediately = 'source_lang' in updates || 'target_lang' in updates || 'engine' in updates || 'always_on_top' in updates || 'auto_show' in updates;
     const delay = shouldSaveImmediately ? 0 : 2000;
     
     saveTimeoutRef.current = window.setTimeout(async () => {
@@ -232,15 +258,28 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         </div>
 
         <div className="grid grid-cols-[120px_1fr] h-[calc(100%-2.75rem)]" style={{ backgroundColor: '#212121' }}>
-          <aside className="border-r border-white/10 p-2 flex flex-col gap-1" style={{ backgroundColor: '#212121' }}>
+          <aside ref={asideRef} className="border-r border-white/10 p-2 flex flex-col gap-1 relative" style={{ backgroundColor: '#212121' }}>
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: 0,
+                right: 0,
+                top: `${indicatorStyle.top}px`,
+                height: `${indicatorStyle.height}px`,
+                borderLeft: `3px solid ${theme.themeColor}`,
+                borderRight: `3px solid ${theme.themeColor}`,
+                background: 'transparent',
+                transition: 'top 0.25s ease, height 0.25s ease',
+              }}
+            />
             {sections.map((section) => (
               <button
                 key={section.id}
                 type="button"
                 onClick={() => setActiveSection(section.id)}
                 className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                  activeSection === section.id ? 'bg-white/15 text-white' : 'text-white/75 hover:bg-white/10 hover:text-white'
+                  'w-full text-left px-3 py-2 rounded-md text-sm transition-colors relative z-10',
+                  activeSection === section.id ? 'text-white' : 'text-white/75 hover:text-white/75'
                 )}
               >
                 {section.label}
@@ -251,46 +290,137 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
           <section className="settings-scroll overflow-y-auto p-4" style={{ backgroundColor: '#212121' }}>
             {activeSection === 'general' && (
               <div className="space-y-4">
+                {/* 开关按钮区域 */}
+                <div className="space-y-1">
+                  {/* 图片翻译 */}
+                  <div className="flex items-center justify-between p-2 rounded bg-[#212121]">
+                    <label className="text-sm font-medium">图片翻译 (仅LLM引擎)</label>
+                    <button
+                      type="button"
+                      onClick={() => void handleSettingsChange({ image_translation_enabled: !settings.image_translation_enabled })}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                      style={{ backgroundColor: settings.image_translation_enabled ? theme.themeColor : undefined }}
+                    >
+                      {!settings.image_translation_enabled && <span className="absolute inset-0 rounded-full bg-gray-600" />}
+                      <span
+                        className={cn(
+                          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform relative z-10",
+                          settings.image_translation_enabled ? "translate-x-6" : "translate-x-1"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 最顶层显示 */}
+                  <div className="flex items-center justify-between p-2 rounded bg-[#212121]">
+                    <label className="text-sm font-medium">最顶层显示</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => void handleSettingsChange({ always_on_top: !settings.always_on_top })}
+                        onMouseEnter={() => setHoveredTooltip('always_on_top')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                        style={{ backgroundColor: settings.always_on_top ? theme.themeColor : undefined }}
+                      >
+                        {!settings.always_on_top && <span className="absolute inset-0 rounded-full bg-gray-600" />}
+                        <span
+                          className={cn(
+                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform relative z-10",
+                            settings.always_on_top ? "translate-x-6" : "translate-x-1"
+                          )}
+                        />
+                      </button>
+                      {hoveredTooltip === 'always_on_top' && (
+                        <div className="absolute right-0 bottom-full mb-2 px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
+                          翻译窗口始终显示在其他窗口上方
+                          <div className="absolute right-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#616161]" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 自动显示 */}
+                  <div className="flex items-center justify-between p-2 rounded bg-[#212121]">
+                    <label className="text-sm font-medium">自动显示</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => void handleSettingsChange({ auto_show: !settings.auto_show })}
+                        onMouseEnter={() => setHoveredTooltip('auto_show')}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                        style={{ backgroundColor: settings.auto_show ? theme.themeColor : undefined }}
+                      >
+                        {!settings.auto_show && <span className="absolute inset-0 rounded-full bg-gray-600" />}
+                        <span
+                          className={cn(
+                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform relative z-10",
+                            settings.auto_show ? "translate-x-6" : "translate-x-1"
+                          )}
+                        />
+                      </button>
+                      {hoveredTooltip === 'auto_show' && (
+                        <div className="absolute right-0 bottom-full mb-2 px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
+                          翻译完成时自动弹出窗口并显示翻译内容
+                          <div className="absolute right-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#616161]" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 分割线 */}
+                <div className="border-t border-gray-600/50" />
+
+                {/* 语言和引擎选择区域 */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">源语言</label>
-                  <select
-                    value={settings.source_lang}
-                    onChange={(e) => void handleSettingsChange({ source_lang: e.target.value })}
-                    className="settings-select w-full p-2 rounded text-white outline-none"
-                  >
-                    <option value="auto">自动检测</option>
-                    <option value="zh">中文</option>
-                    <option value="en">英语</option>
-                    <option value="ja">日语</option>
-                    <option value="ko">韩语</option>
-                  </select>
+                  <div className="settings-select-wrapper">
+                    <select
+                      value={settings.source_lang}
+                      onChange={(e) => void handleSettingsChange({ source_lang: e.target.value })}
+                      className="settings-select w-full p-2 text-white outline-none"
+                    >
+                      <option value="auto">自动检测</option>
+                      <option value="zh">中文</option>
+                      <option value="en">英语</option>
+                      <option value="ja">日语</option>
+                      <option value="ko">韩语</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">目标语言</label>
-                  <select
-                    value={settings.target_lang}
-                    onChange={(e) => void handleSettingsChange({ target_lang: e.target.value })}
-                    className="settings-select w-full p-2 rounded text-white outline-none"
-                  >
-                    <option value="zh">中文</option>
-                    <option value="en">英语</option>
-                    <option value="ja">日语</option>
-                    <option value="ko">韩语</option>
-                  </select>
+                  <div className="settings-select-wrapper">
+                    <select
+                      value={settings.target_lang}
+                      onChange={(e) => void handleSettingsChange({ target_lang: e.target.value })}
+                      className="settings-select w-full p-2 text-white outline-none"
+                    >
+                      <option value="zh">中文</option>
+                      <option value="en">英语</option>
+                      <option value="ja">日语</option>
+                      <option value="ko">韩语</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">翻译引擎</label>
-                  <select
-                    value={settings.engine}
-                    onChange={(e) => void handleSettingsChange({ engine: e.target.value })}
-                    className="settings-select w-full p-2 rounded text-white outline-none"
-                  >
-                    <option value="google">谷歌翻译</option>
-                    <option value="baidu">百度翻译</option>
-                    <option value="llmapi">大模型API</option>
-                    <option value="ollama">Ollama</option>
-                  </select>
+                  <div className="settings-select-wrapper">
+                    <select
+                      value={settings.engine}
+                      onChange={(e) => void handleSettingsChange({ engine: e.target.value })}
+                      className="settings-select w-full p-2 text-white outline-none"
+                    >
+                      <option value="google">谷歌翻译</option>
+                      <option value="baidu">百度翻译</option>
+                      <option value="llmapi">大模型API</option>
+                      <option value="ollama">Ollama</option>
+                    </select>
+                  </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => void handleReset()}
@@ -463,6 +593,15 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="VLM 模型 (用于图片翻译, 可选)"
+                          value={settings.llmapi_vlm_model}
+                          onChange={(e) => void handleSettingsChange({ llmapi_vlm_model: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -494,6 +633,15 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                           placeholder="模型 (默认 llama2)"
                           value={settings.ollama_model}
                           onChange={(e) => void handleSettingsChange({ ollama_model: e.target.value })}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                      </div>
+                      <div className="engine-input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="VLM 模型 (用于图片翻译, 可选)"
+                          value={settings.ollama_vlm_model}
+                          onChange={(e) => void handleSettingsChange({ ollama_vlm_model: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>

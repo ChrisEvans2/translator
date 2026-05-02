@@ -57,7 +57,7 @@ src/                        # React frontend
     └── engine.ts           # Engine discriminated union type
 
 src-tauri/src/              # Rust backend
-├── settings.rs             # Settings persistence (%APPDATA%/translate_app/settings.json)
+├── settings.rs             # Settings persistence (~/translate_app.json, auto-migrates from %APPDATA%)
 ├── clipboard.rs            # Clipboard monitoring
 ├── engines/
 │   ├── mod.rs              # TranslationEngine trait + EngineError enum + lang_code_to_name()
@@ -65,7 +65,7 @@ src-tauri/src/              # Rust backend
 │   ├── google.rs           # Google (mirror-first, fallback to official)
 │   ├── llmapi.rs           # LLM API (OpenAI-compatible, default: SiliconFlow)
 │   └── ollama.rs           # Local Ollama
-└── lib.rs                  # Tauri commands: translate, get_settings, set_settings
+└── lib.rs                  # Tauri commands: translate, translate_image, get_settings, set_settings
 ```
 
 ## Key Runtime Behaviour
@@ -78,9 +78,21 @@ src-tauri/src/              # Rust backend
 
 ### Settings
 
-- Persisted to `%APPDATA%\translate_app\settings.json` (Windows) via `dirs::config_dir()`.
+- Persisted to `~/translate_app.json` (e.g. `C:\Users\kiddom\translate_app.json`) via `dirs::home_dir()`.
+- Auto-migrates from old path `%APPDATA%/translate_app/settings.json` on first load.
+- If neither path exists, creates a default settings file automatically.
 - Every `set_settings` call emits a `theme-changed` event to all windows — `App.tsx` and `ThemeContext.tsx` both listen to reload.
+- `image_translation_enabled` and engine-specific VLM model fields (`llmapi_vlm_model`, `ollama_vlm_model`) use `#[serde(default)]` for backward compatibility.
 - `google_url` field is `#[serde(skip_serializing)]` — a legacy/migration field, not saved.
+
+### Image Translation (VLM)
+
+- Toggle: `image_translation_enabled` in Settings > General.
+- Only works with LLM engines (`llmapi`, `ollama`); non-LLM engines return "not supported".
+- Separate VLM model fields: `llmapi_vlm_model`, `ollama_vlm_model` (falls back to main model if empty).
+- Frontend reads clipboard image via `readImage()` from `@tauri-apps/plugin-clipboard-manager`, converts to base64.
+- Backend `translate_image` command sends base64 image + prompt to VLM API.
+- `TranslationEngine` trait has `translate_image` method with default "not supported" implementation.
 
 ### Engine: llmapi
 
@@ -151,7 +163,7 @@ invoke('set_settings', { settings }).catch(console.error);
 
 ### Tauri Events
 
-- Rust: `app.emit_all()` to broadcast to all windows
+- Rust: `app.emit()` to broadcast to all windows
 - React: `listen()` from `@tauri-apps/api/event`; always clean up in `useEffect` return
 
 ## Adding a New Translation Engine

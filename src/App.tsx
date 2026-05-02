@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { writeText, readImage } from '@tauri-apps/plugin-clipboard-manager';
 import { Titlebar } from '@/components/Titlebar';
 import { TranslationView } from '@/components/TranslationView';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -13,6 +13,9 @@ interface Settings {
   target_lang: string;
   engine: string;
   clipboard_enabled: boolean;
+  image_translation_enabled: boolean;
+  always_on_top: boolean;
+  auto_show: boolean;
   theme_color: string;
   bg_color: string;
   text_color: string;
@@ -35,21 +38,24 @@ function TranslationApp() {
   const [error, setError] = useState<string | undefined>();
   const [settings, setSettings] = useState<Settings | null>(null);
   const settingsRef = useRef<Settings | null>(null);
+  const isLoadingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
   const clipboardText = useClipboard();
 
-  // Keep ref in sync with settings state
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
 
   useEffect(() => {
-    invoke<Settings>('get_settings').then(setSettings).catch(console.error);
+    invoke<Settings>('get_settings').then((s) => {
+      setSettings(s);
+      invoke('set_window_always_on_top', { alwaysOnTop: s.always_on_top }).catch(console.error);
+    }).catch(console.error);
 
     const unlisten = listen('theme-changed', async () => {
-      console.log('[App] Received theme-changed event, reloading settings...');
       const newSettings = await invoke<Settings>('get_settings');
-      console.log('[App] Settings loaded:', newSettings);
       setSettings(newSettings);
+      invoke('set_window_always_on_top', { alwaysOnTop: newSettings.always_on_top }).catch(console.error);
     });
 
     return () => {
@@ -63,41 +69,105 @@ function TranslationApp() {
     const translate = async () => {
       const currentSettings = settingsRef.current;
       if (!currentSettings || !currentSettings.clipboard_enabled) return;
-      if (isLoading) return;
+      if (isLoadingRef.current) return;
 
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      abortRef.current = new AbortController();
+
+      isLoadingRef.current = true;
       setIsLoading(true);
       setError(undefined);
       
       try {
-        // LLM engines handle LaTeX natively via prompt instructions.
-        // Non-LLM engines need placeholder extraction to protect LaTeX from translation.
         const isLLMEngine = currentSettings.engine === 'llmapi' || currentSettings.engine === 'ollama';
         const { plainText, segments } = isLLMEngine
           ? { plainText: clipboardText, segments: [] }
           : extractLatex(clipboardText);
         
-        const result = await invoke<{ text: string; error?: string }>('translate', {
-          text: plainText,
-          from: currentSettings.source_lang,
-          to: currentSettings.target_lang,
-          engine: currentSettings.engine,
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('翻译请求超时 (30s)')), 30000);
         });
+
+        const result = await Promise.race([
+          invoke<{ text: string; error?: string }>('translate', {
+            text: plainText,
+            from: currentSettings.source_lang,
+            to: currentSettings.target_lang,
+            engine: currentSettings.engine,
+          }),
+          timeoutPromise,
+        ]);
 
         if (result.error) {
           setError(result.error);
         } else {
           const finalText = segments.length > 0 ? reinsertLatex(result.text, segments) : result.text;
           setTranslatedText(finalText);
+          if (currentSettings.auto_show) {
+            invoke('show_main_window').catch(console.error);
+          }
         }
       } catch (e) {
-        setError(String(e));
+        const msg = String(e);
+        if (!msg.includes('abort')) {
+          setError(msg);
+        }
       } finally {
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
+    };
+
+    const translateImage = async () => {
+      const currentSettings = settingsRef.current;
+      if (!currentSettings || !currentSettings.image_translation_enabled) return;
+      if (isLoadingRef.current) return;
+
+      const isLLMEngine = currentSettings.engine === 'llmapi' || currentSettings.engine === 'ollama';
+      if (!isLLMEngine) return;
+
+      try {
+        const clipboardImage = await readImage();
+        const rgba = await clipboardImage.rgba();
+        const base64 = btoa(String.fromCharCode(...rgba));
+        
+        isLoadingRef.current = true;
+        setIsLoading(true);
+        setError(undefined);
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('图片翻译请求超时 (30s)')), 30000);
+        });
+
+        const result = await Promise.race([
+          invoke<{ text: string; error?: string }>('translate_image', {
+            imageBase64: base64,
+            to: currentSettings.target_lang,
+            engine: currentSettings.engine,
+          }),
+          timeoutPromise,
+        ]);
+
+        if (result.error) {
+          setError(result.error);
+        } else {
+          setTranslatedText(result.text);
+          if (currentSettings.auto_show) {
+            invoke('show_main_window').catch(console.error);
+          }
+        }
+      } catch (e) {
+      } finally {
+        isLoadingRef.current = false;
         setIsLoading(false);
       }
     };
 
     translate();
-  }, [clipboardText, settings?.engine, settings?.source_lang, settings?.target_lang]);
+    translateImage();
+  }, [clipboardText, settings?.engine, settings?.source_lang, settings?.target_lang, settings?.image_translation_enabled]);
 
   const handleCopy = async () => {
     if (translatedText) {
