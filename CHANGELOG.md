@@ -9,6 +9,24 @@
 
 ---
 
+## [0.0.6] - 2026-05-02
+
+### 优化
+- **设置界面弹窗（Tooltip）重构**：所有引擎设置弹窗从 `position: absolute` 改为 `position: fixed`，避免被滚动容器截断
+- **弹窗自动向上弹出**：检测到下方空间不足时自动向上弹出，右侧溢出时自动左移
+- **长文本拆行显示**：百度 APP ID/密钥、谷歌镜像源/官方 URL、大模型API 地址/模型等长文本弹窗拆成两行
+- **精简弹窗**：仅举例输入框（URL、模型等）保留弹窗提示，API Key、VLM 模型等移除弹窗
+- **图片翻译标签**：移除「仅LLM引擎」标注，改为通用「图片翻译」
+
+### 新功能
+- **大模型API URL 可配置**：新增 `llmapi_url` 设置字段，支持任何 OpenAI 兼容 API 提供商（DeepSeek、Moonshot、智谱、Groq、Together、LM Studio、vLLM 等）
+
+### 修复
+- 修复设置窗口弹窗被 `overflow-y-auto` 截断的问题（`settings.html` 添加 `overflow: visible`）
+- 修复设置窗口根容器 `overflow-hidden` 导致弹窗无法显示的问题
+
+---
+
 ## [0.0.5] - 2026-05-01
 
 ### 新功能
