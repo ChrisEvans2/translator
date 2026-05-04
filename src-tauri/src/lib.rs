@@ -39,7 +39,7 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
     let translator: Box<dyn TranslationEngine> = match engine.as_str() {
         "baidu" => Box::new(BaiduEngine::new(settings.baidu_app_id, settings.baidu_secret_key)),
         "google" => Box::new(GoogleEngine::new(settings.google_mirror_url, settings.google_official_url, settings.google_api_key)),
-        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_model)),
+        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
         "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
         _ => return Err(format!("Unknown engine: {}", engine)),
     };
@@ -76,7 +76,7 @@ async fn translate_image(image_base64: String, to: String, engine: String) -> Re
     let prompt = format!("Translate the text in this image to {}. Output only the translated text without any explanation.", to_name);
 
     let translator: Box<dyn TranslationEngine> = match engine.as_str() {
-        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_model)),
+        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
         "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
         _ => return Ok(TranslationResult {
             text: String::new(),

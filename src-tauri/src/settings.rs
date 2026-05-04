@@ -27,6 +27,8 @@ pub struct Settings {
     pub google_api_key: String,
     #[serde(default)]
     pub llmapi_api_key: String,
+    #[serde(default = "default_llmapi_url")]
+    pub llmapi_url: String,
     #[serde(default)]
     pub llmapi_model: String,
     #[serde(default)]
@@ -45,6 +47,10 @@ pub struct Settings {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_llmapi_url() -> String {
+    "https://api.siliconflow.cn/v1/chat/completions".to_string()
 }
 
 impl Default for Settings {
@@ -66,6 +72,7 @@ impl Default for Settings {
             google_official_url: String::new(),
             google_api_key: String::new(),
             llmapi_api_key: String::new(),
+            llmapi_url: "https://api.siliconflow.cn/v1/chat/completions".to_string(),
             llmapi_model: "deepseek-ai/DeepSeek-V3".to_string(),
             llmapi_vlm_model: String::new(),
             ollama_url: "http://localhost:11434".to_string(),

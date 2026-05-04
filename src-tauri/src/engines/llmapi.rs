@@ -5,6 +5,7 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct LLMApiEngine {
     pub api_key: String,
+    pub url: String,
     pub model: String,
 }
 
@@ -50,9 +51,10 @@ struct LLMApiMessageResponse {
 }
 
 impl LLMApiEngine {
-    pub fn new(api_key: String, model: String) -> Self {
+    pub fn new(api_key: String, url: String, model: String) -> Self {
         Self { 
-            api_key, 
+            api_key,
+            url: if url.is_empty() { "https://api.siliconflow.cn/v1/chat/completions".to_string() } else { url },
             model: if model.is_empty() { "deepseek-ai/DeepSeek-V3".to_string() } else { model } 
         }
     }
@@ -93,7 +95,7 @@ impl super::TranslationEngine for LLMApiEngine {
         };
         
         let response = client
-            .post("https://api.siliconflow.cn/v1/chat/completions")
+            .post(&self.url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&request)
@@ -141,7 +143,7 @@ impl super::TranslationEngine for LLMApiEngine {
         };
 
         let response = client
-            .post("https://api.siliconflow.cn/v1/chat/completions")
+            .post(&self.url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&request)
