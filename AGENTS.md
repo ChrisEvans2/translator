@@ -96,7 +96,8 @@ src-tauri/src/              # Rust backend
 
 ### Engine: llmapi
 
-- Endpoint hardcoded: `https://api.siliconflow.cn/v1/chat/completions` (OpenAI-compatible).
+- Endpoint configurable via `llmapi_url` setting (default: `https://api.siliconflow.cn/v1/chat/completions`).
+- Supports any OpenAI-compatible API provider (DeepSeek, Moonshot, Zhipu, Groq, Together, LM Studio, vLLM, etc.).
 - Default model: `deepseek-ai/DeepSeek-V3`. Falls back to this if `llmapi_model` is empty.
 - System prompt uses `lang_code_to_name()` from `engines/mod.rs` to convert codes (`zh` → `Chinese`, `en` → `English`, `ja` → `Japanese`, `ko` → `Korean`, `auto` → `auto-detect`).
 
