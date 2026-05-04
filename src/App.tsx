@@ -27,6 +27,7 @@ interface Settings {
   google_official_url: string;
   google_api_key: string;
   llmapi_api_key: string;
+  llmapi_url: string;
   llmapi_model: string;
   ollama_url: string;
   ollama_model: string;

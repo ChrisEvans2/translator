@@ -25,6 +25,7 @@ const defaultSettings = {
   baidu_app_id: '',
   baidu_secret_key: '',
   llmapi_api_key: '',
+  llmapi_url: 'https://api.siliconflow.cn/v1/chat/completions',
   llmapi_model: 'deepseek-ai/DeepSeek-V3',
   llmapi_vlm_model: '',
   ollama_url: 'http://localhost:11434',
@@ -48,6 +49,27 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
   const asideRef = useRef<HTMLElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ top: 8, height: 36 });
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
+
+  const handleTooltipEnter = (id: string, e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const padding = 8;
+    let left = rect.left;
+    let top = rect.bottom + 4;
+    if (left + 300 > window.innerWidth) {
+      left = window.innerWidth - 300 - padding;
+    }
+    if (top + 40 > window.innerHeight) {
+      top = rect.top - 4 - 40;
+    }
+    setHoveredTooltip(id);
+    setTooltipPos({ left, top });
+  };
+
+  const handleTooltipLeave = () => {
+    setHoveredTooltip(null);
+    setTooltipPos(null);
+  };
 
   useEffect(() => {
     if (!asideRef.current) return;
@@ -79,6 +101,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
         baidu_app_id: s.baidu_app_id || '',
         baidu_secret_key: s.baidu_secret_key || '',
         llmapi_api_key: s.llmapi_api_key || '',
+        llmapi_url: s.llmapi_url || defaultSettings.llmapi_url,
         llmapi_model: s.llmapi_model || defaultSettings.llmapi_model,
         llmapi_vlm_model: s.llmapi_vlm_model || '',
         ollama_url: s.ollama_url || defaultSettings.ollama_url,
@@ -233,10 +256,10 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
 
   return (
     <div
-      className="h-screen w-screen overflow-hidden"
+      className="h-screen w-screen overflow-visible"
       style={{ backgroundColor: '#212121', color: 'white' }}
     >
-      <div className="h-full w-full overflow-hidden border border-white/10">
+      <div className="h-full w-full overflow-visible border border-white/10">
         <div
           className="h-11 flex items-center px-3 border-b border-white/10 cursor-default"
           style={{ backgroundColor: theme.themeColor }}
@@ -294,7 +317,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                 <div className="space-y-1">
                   {/* 图片翻译 */}
                   <div className="flex items-center justify-between p-2 rounded bg-[#212121]">
-                    <label className="text-sm font-medium">图片翻译 (仅LLM引擎)</label>
+                    <label className="text-sm font-medium">图片翻译</label>
                     <button
                       type="button"
                       onClick={() => void handleSettingsChange({ image_translation_enabled: !settings.image_translation_enabled })}
@@ -318,8 +341,8 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       <button
                         type="button"
                         onClick={() => void handleSettingsChange({ always_on_top: !settings.always_on_top })}
-                        onMouseEnter={() => setHoveredTooltip('always_on_top')}
-                        onMouseLeave={() => setHoveredTooltip(null)}
+                        onMouseEnter={(e) => handleTooltipEnter('always_on_top', e)}
+                        onMouseLeave={handleTooltipLeave}
                         className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
                         style={{ backgroundColor: settings.always_on_top ? theme.themeColor : undefined }}
                       >
@@ -331,10 +354,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                           )}
                         />
                       </button>
-                      {hoveredTooltip === 'always_on_top' && (
-                        <div className="absolute right-0 bottom-full mb-2 px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
+                      {hoveredTooltip === 'always_on_top' && tooltipPos && (
+                        <div className="fixed px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-[9999]" style={{ left: tooltipPos.left - 120, top: tooltipPos.top }}>
                           翻译窗口始终显示在其他窗口上方
-                          <div className="absolute right-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#616161]" />
                         </div>
                       )}
                     </div>
@@ -347,8 +369,8 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       <button
                         type="button"
                         onClick={() => void handleSettingsChange({ auto_show: !settings.auto_show })}
-                        onMouseEnter={() => setHoveredTooltip('auto_show')}
-                        onMouseLeave={() => setHoveredTooltip(null)}
+                        onMouseEnter={(e) => handleTooltipEnter('auto_show', e)}
+                        onMouseLeave={handleTooltipLeave}
                         className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
                         style={{ backgroundColor: settings.auto_show ? theme.themeColor : undefined }}
                       >
@@ -360,10 +382,9 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                           )}
                         />
                       </button>
-                      {hoveredTooltip === 'auto_show' && (
-                        <div className="absolute right-0 bottom-full mb-2 px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
+                      {hoveredTooltip === 'auto_show' && tooltipPos && (
+                        <div className="fixed px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-[9999]" style={{ left: tooltipPos.left - 140, top: tooltipPos.top }}>
                           翻译完成时自动弹出窗口并显示翻译内容
-                          <div className="absolute right-3 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#616161]" />
                         </div>
                       )}
                     </div>
@@ -486,41 +507,62 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
             {activeSection === 'engines' && (
               <div className="space-y-0">
                 {/* 百度翻译 */}
-                <div className="rounded overflow-hidden" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'baidu' ? null : 'baidu')}
-                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between"
+                    onMouseEnter={(e) => handleTooltipEnter('baidu', e)}
+                    onMouseLeave={handleTooltipLeave}
+                    className="w-full text-left p-3 text-sm font-medium hover:bg-white/5 transition-colors flex items-center justify-between relative"
                   >
                     <span>百度翻译</span>
+                    {hoveredTooltip === 'baidu' && tooltipPos && (
+                      <div className="fixed px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999] whitespace-nowrap" style={{ left: tooltipPos.left + 64, top: tooltipPos.top }}>
+                        去百度翻译开放平台进行注册
+                      </div>
+                    )}
                     {expandedEngine === 'baidu' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'baidu' && (
-                    <div className="space-y-2 p-3 pt-0">
-                      <div className="engine-input-wrapper">
+                    <div className="space-y-2 p-3 pt-0 pb-4">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="APP ID（通用翻译API - fanyi-api.baidu.com → 开发者中心 → 开发者信息）"
+                          placeholder="APP ID"
                           value={settings.baidu_app_id}
                           onChange={(e) => void handleSettingsChange({ baidu_app_id: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('baidu_app_id', e)}
+                          onMouseLeave={handleTooltipLeave}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'baidu_app_id' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 260 }}>
+                            前往 fanyi-api.baidu.com<br />→ 开发者中心 → 开发者信息 获取
+                          </div>
+                        )}
                       </div>
-                      <div className="engine-input-wrapper">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="password"
-                          placeholder="密钥（通用翻译API - fanyi-api.baidu.com → 开发者中心 → 开发者信息）"
+                          placeholder="密钥"
                           value={settings.baidu_secret_key}
                           onChange={(e) => void handleSettingsChange({ baidu_secret_key: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('baidu_secret_key', e)}
+                          onMouseLeave={handleTooltipLeave}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'baidu_secret_key' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 260 }}>
+                            前往 fanyi-api.baidu.com<br />→ 开发者中心 → 开发者信息 获取
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* 谷歌翻译 */}
-                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'google' ? null : 'google')}
@@ -531,29 +573,43 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                     {expandedEngine === 'google' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'google' && (
-                    <div className="space-y-2 p-3 pt-0">
-                      <div className="engine-input-wrapper">
+                    <div className="space-y-2 p-3 pt-0 pb-4">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="镜像源 URL (如 translate.googleapis.com/translate_a/single)"
+                          placeholder="镜像源 URL"
                           value={settings.google_mirror_url}
                           onChange={(e) => void handleSettingsChange({ google_mirror_url: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('google_mirror', e)}
+                          onMouseLeave={handleTooltipLeave}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'google_mirror' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 280 }}>
+                            如 translate.googleapis.com<br />/translate_a/single
+                          </div>
+                        )}
                       </div>
-                      <div className="engine-input-wrapper">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="官方 URL (可选，默认 translation.googleapis.com/language/translate/v2)"
+                          placeholder="官方 URL（可选）"
                           value={settings.google_official_url}
                           onChange={(e) => void handleSettingsChange({ google_official_url: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('google_official', e)}
+                          onMouseLeave={handleTooltipLeave}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'google_official' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 280 }}>
+                            如 translation.googleapis.com<br />/language/translate/v2
+                          </div>
+                        )}
                       </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="password"
-                          placeholder="API Key (官方 API 必需)"
+                          placeholder="API Key"
                           value={settings.google_api_key}
                           onChange={(e) => void handleSettingsChange({ google_api_key: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
@@ -564,7 +620,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                 </div>
 
                 {/* 大模型API */}
-                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'llmapi' ? null : 'llmapi')}
@@ -574,7 +630,23 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                     {expandedEngine === 'llmapi' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'llmapi' && (
-                    <div className="space-y-2 p-3 pt-0">
+                    <div className="space-y-2 p-3 pt-0 pb-4">
+                      <div className="engine-input-wrapper relative">
+                        <input
+                          type="text"
+                          placeholder="API 地址"
+                          value={settings.llmapi_url}
+                          onChange={(e) => void handleSettingsChange({ llmapi_url: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('llmapi_url', e)}
+                          onMouseLeave={handleTooltipLeave}
+                          className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
+                        />
+                        {hoveredTooltip === 'llmapi_url' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 300 }}>
+                            使用兼容 OpenAI 格式的地址<br />如 https://api.deepseek.com/v1/chat/completions
+                          </div>
+                        )}
+                      </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="password"
@@ -584,19 +656,26 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
                       </div>
-                      <div className="engine-input-wrapper">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="使用模型"
+                          placeholder="模型"
                           value={settings.llmapi_model}
                           onChange={(e) => void handleSettingsChange({ llmapi_model: e.target.value })}
+                          onMouseEnter={(e) => handleTooltipEnter('llmapi_model', e)}
+                          onMouseLeave={handleTooltipLeave}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'llmapi_model' && tooltipPos && (
+                          <div className="fixed px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-[9999]" style={{ left: tooltipPos.left, top: tooltipPos.top, maxWidth: 280 }}>
+                            如 deepseek-ai/DeepSeek-V3<br />Qwen/Qwen2.5-72B-Instruct
+                          </div>
+                        )}
                       </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="text"
-                          placeholder="VLM 模型 (用于图片翻译, 可选)"
+                          placeholder="VLM 模型（可选）"
                           value={settings.llmapi_vlm_model}
                           onChange={(e) => void handleSettingsChange({ llmapi_vlm_model: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
@@ -607,7 +686,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                 </div>
 
                 {/* Ollama */}
-                <div className="rounded overflow-hidden border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
+                <div className="rounded border-t border-[#9e9e9e]" style={{ backgroundColor: '#212121' }}>
                   <button
                     type="button"
                     onClick={() => setExpandedEngine(expandedEngine === 'ollama' ? null : 'ollama')}
@@ -617,29 +696,45 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                     {expandedEngine === 'ollama' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
                   {expandedEngine === 'ollama' && (
-                    <div className="space-y-2 p-3 pt-0">
-                      <div className="engine-input-wrapper">
+                    <div className="space-y-2 p-3 pt-0 pb-4">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="URL (默认 http://localhost:11434)"
+                          placeholder="URL"
                           value={settings.ollama_url}
                           onChange={(e) => void handleSettingsChange({ ollama_url: e.target.value })}
+                          onMouseEnter={() => setHoveredTooltip('ollama_url')}
+                          onMouseLeave={() => setHoveredTooltip(null)}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'ollama_url' && (
+                          <div className="absolute left-0 top-full mt-1 px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                            如 http://localhost:11434
+                            <div className="absolute left-4 bottom-full w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-[#616161]" />
+                          </div>
+                        )}
                       </div>
-                      <div className="engine-input-wrapper">
+                      <div className="engine-input-wrapper relative">
                         <input
                           type="text"
-                          placeholder="模型 (默认 llama2)"
+                          placeholder="模型"
                           value={settings.ollama_model}
                           onChange={(e) => void handleSettingsChange({ ollama_model: e.target.value })}
+                          onMouseEnter={() => setHoveredTooltip('ollama_model')}
+                          onMouseLeave={() => setHoveredTooltip(null)}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
                         />
+                        {hoveredTooltip === 'ollama_model' && (
+                          <div className="absolute left-0 top-full mt-1 px-4 py-2 bg-[#616161] text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                            如 llama2、qwen2.5:7b、deepseek-r1:14b
+                            <div className="absolute left-4 bottom-full w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-[#616161]" />
+                          </div>
+                        )}
                       </div>
                       <div className="engine-input-wrapper">
                         <input
                           type="text"
-                          placeholder="VLM 模型 (用于图片翻译, 可选)"
+                          placeholder="VLM 模型（可选）"
                           value={settings.ollama_vlm_model}
                           onChange={(e) => void handleSettingsChange({ ollama_vlm_model: e.target.value })}
                           className="engine-input w-full p-1.5 bg-[#212121] text-white placeholder:text-gray-500 outline-none"
