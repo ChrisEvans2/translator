@@ -1,6 +1,7 @@
 mod settings;
 mod clipboard;
 mod engines;
+mod selection;
 
 use clipboard::spawn_clipboard_monitor;
 use settings::{get_settings, set_settings};
@@ -177,16 +178,43 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn register_selection(app: tauri::AppHandle, hotkey: String) -> Result<(), String> {
+    selection::register_global_shortcut(app, &hotkey)
+}
+
+#[tauri::command]
+async fn unregister_selection(app: tauri::AppHandle) -> Result<(), String> {
+    selection::unregister_global_shortcut(app)
+}
+
+#[tauri::command]
+async fn start_selection_monitor(app: tauri::AppHandle) -> Result<(), String> {
+    selection::spawn_mouse_monitor(app);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_last_selection_payload() -> Option<selection::SelectionPayload> {
+    selection::get_last_payload()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             spawn_clipboard_monitor(app.handle().clone());
             
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build());
+            
+            let settings = get_settings().unwrap_or_default();
+            
             if let Some(window) = app.get_webview_window("main") {
-                let settings = get_settings().unwrap_or_default();
                 let _ = window.set_always_on_top(settings.always_on_top);
             }
+            
+            let _ = selection::apply_settings(app.handle().clone(), &settings);
             
             Ok(())
         })
@@ -202,7 +230,11 @@ pub fn run() {
             minimize_window,
             close_window,
             set_window_always_on_top,
-            show_main_window
+            show_main_window,
+            register_selection,
+            unregister_selection,
+            start_selection_monitor,
+            get_last_selection_payload
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

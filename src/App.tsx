@@ -31,6 +31,11 @@ interface Settings {
   llmapi_model: string;
   ollama_url: string;
   ollama_model: string;
+  selection_enabled: boolean;
+  selection_auto_mode: boolean;
+  selection_hotkey: string;
+  selection_restore_clipboard: boolean;
+  selection_auto_close_ms: number;
 }
 
 function TranslationApp() {

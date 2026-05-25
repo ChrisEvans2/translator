@@ -41,6 +41,17 @@ pub struct Settings {
     pub always_on_top: bool,
     #[serde(default = "default_true")]
     pub auto_show: bool,
+    // 划词翻译设置
+    #[serde(default)]
+    pub selection_enabled: bool,
+    #[serde(default = "default_true")]
+    pub selection_auto_mode: bool,
+    #[serde(default = "default_selection_hotkey")]
+    pub selection_hotkey: String,
+    #[serde(default = "default_true")]
+    pub selection_restore_clipboard: bool,
+    #[serde(default = "default_selection_auto_close_ms")]
+    pub selection_auto_close_ms: u32,
     #[serde(skip_serializing, default)]
     pub google_url: Option<String>,
 }
@@ -51,6 +62,14 @@ fn default_true() -> bool {
 
 fn default_llmapi_url() -> String {
     "https://api.siliconflow.cn/v1/chat/completions".to_string()
+}
+
+fn default_selection_hotkey() -> String {
+    "Alt+Q".to_string()
+}
+
+fn default_selection_auto_close_ms() -> u32 {
+    3000
 }
 
 impl Default for Settings {
@@ -80,6 +99,11 @@ impl Default for Settings {
             ollama_vlm_model: String::new(),
             always_on_top: true,
             auto_show: true,
+            selection_enabled: false,
+            selection_auto_mode: true,
+            selection_hotkey: "Alt+Q".to_string(),
+            selection_restore_clipboard: true,
+            selection_auto_close_ms: 3000,
             google_url: None,
         }
     }
@@ -141,6 +165,8 @@ pub fn set_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), Str
     let path = get_settings_path();
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())?;
+
+    crate::selection::apply_settings(app.clone(), &settings)?;
 
     app.emit("theme-changed", ())
         .map_err(|e: tauri::Error| e.to_string())?;
