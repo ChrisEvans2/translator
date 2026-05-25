@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::time::Duration;
 
 use super::{EngineError, TranslationEngine};
 
@@ -54,7 +55,10 @@ impl TranslationEngine for BaiduEngine {
         let salt = rand::random::<u16>().to_string();
         let sign = self.generate_sign(text, &salt);
 
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| EngineError::Network(e.to_string()))?;
         let response = client
             .get("https://api.fanyi.baidu.com/api/trans/vip/translate")
             .query(&[

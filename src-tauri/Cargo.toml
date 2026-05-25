@@ -32,3 +32,6 @@ rand = "0.8"
 urlencoding = "2.1"
 dirs = "6"
 async-trait = "0.1"
+tauri-plugin-global-shortcut = "2"
+enigo = { version = "0.2", features = ["serde"] }
+winapi = { version = "0.3", features = ["winuser", "minwindef", "windef"] }

@@ -1,6 +1,7 @@
 mod settings;
 mod clipboard;
 mod engines;
+mod selection;
 
 use clipboard::spawn_clipboard_monitor;
 use settings::{get_settings, set_settings};
@@ -39,7 +40,7 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
     let translator: Box<dyn TranslationEngine> = match engine.as_str() {
         "baidu" => Box::new(BaiduEngine::new(settings.baidu_app_id, settings.baidu_secret_key)),
         "google" => Box::new(GoogleEngine::new(settings.google_mirror_url, settings.google_official_url, settings.google_api_key)),
-        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_model)),
+        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
         "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
         _ => return Err(format!("Unknown engine: {}", engine)),
     };
@@ -47,6 +48,51 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
     let from_lang = &from;
     
     match translator.translate(&text, from_lang, &to).await {
+        Ok(translated) => Ok(TranslationResult {
+            text: translated,
+            engine: engine.clone(),
+            error: None,
+        }),
+        Err(e) => Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+#[tauri::command]
+async fn translate_image(image_base64: String, to: String, engine: String) -> Result<TranslationResult, String> {
+    let settings = get_settings()?;
+    
+    if !settings.image_translation_enabled {
+        return Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some("图片翻译未开启。请在设置中开启。".to_string()),
+        });
+    }
+
+    let to_name = engines::lang_code_to_name(&to);
+    let prompt = format!("Translate the text in this image to {}. Output only the translated text without any explanation.", to_name);
+
+    let translator: Box<dyn TranslationEngine> = match engine.as_str() {
+        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
+        "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
+        _ => return Ok(TranslationResult {
+            text: String::new(),
+            engine: engine.clone(),
+            error: Some("图片翻译仅支持大模型API和Ollama引擎。".to_string()),
+        }),
+    };
+
+    let vlm_model = match engine.as_str() {
+        "llmapi" => &settings.llmapi_vlm_model,
+        "ollama" => &settings.ollama_vlm_model,
+        _ => "",
+    };
+
+    match translator.translate_image(&image_base64, &prompt, vlm_model).await {
         Ok(translated) => Ok(TranslationResult {
             text: translated,
             engine: engine.clone(),
@@ -82,6 +128,23 @@ fn close_window(window: tauri::WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_window_always_on_top(window: tauri::WebviewWindow, always_on_top: bool) -> Result<(), String> {
+    window
+        .set_always_on_top(always_on_top)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.show().map_err(|e| e.to_string())?;
+        window.unminimize().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(existing) = app.get_webview_window("settings") {
         existing.show().map_err(|e| e.to_string())?;
@@ -106,7 +169,6 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     .center()
     .inner_size(width, height)
     .min_inner_size(min_width, min_height)
-    .always_on_top(true)
     .build()
     .map_err(|e| e.to_string())?;
 
@@ -116,15 +178,43 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn register_selection(app: tauri::AppHandle, hotkey: String) -> Result<(), String> {
+    selection::register_global_shortcut(app, &hotkey)
+}
+
+#[tauri::command]
+async fn unregister_selection(app: tauri::AppHandle) -> Result<(), String> {
+    selection::unregister_global_shortcut(app)
+}
+
+#[tauri::command]
+async fn start_selection_monitor(app: tauri::AppHandle) -> Result<(), String> {
+    selection::spawn_mouse_monitor(app);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_last_selection_payload() -> Option<selection::SelectionPayload> {
+    selection::get_last_payload()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             spawn_clipboard_monitor(app.handle().clone());
             
+            #[cfg(desktop)]
+            let _ = app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build());
+            
+            let settings = get_settings().unwrap_or_default();
+            
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_always_on_top(true);
+                let _ = window.set_always_on_top(settings.always_on_top);
             }
+            
+            let _ = selection::apply_settings(app.handle().clone(), &settings);
             
             Ok(())
         })
@@ -134,10 +224,17 @@ pub fn run() {
             get_settings,
             set_settings,
             translate,
+            translate_image,
             open_settings_window,
             start_dragging,
             minimize_window,
-            close_window
+            close_window,
+            set_window_always_on_top,
+            show_main_window,
+            register_selection,
+            unregister_selection,
+            start_selection_monitor,
+            get_last_selection_payload
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

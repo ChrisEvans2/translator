@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct OllamaEngine {
@@ -18,6 +19,8 @@ struct OllamaRequest {
 struct OllamaMessage {
     role: String,
     content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    images: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,7 +49,10 @@ impl super::TranslationEngine for OllamaEngine {
     }
 
     async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, super::EngineError> {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
         let to_name = super::lang_code_to_name(to);
         let from_name = super::lang_code_to_name(from);
         
@@ -62,10 +68,12 @@ impl super::TranslationEngine for OllamaEngine {
                 OllamaMessage {
                     role: "system".to_string(),
                     content: system_prompt,
+                    images: None,
                 },
                 OllamaMessage {
                     role: "user".to_string(),
                     content: text.to_string(),
+                    images: None,
                 },
             ],
             stream: false,
@@ -83,6 +91,43 @@ impl super::TranslationEngine for OllamaEngine {
             .await
             .map_err(|e| super::EngineError::Parse(e.to_string()))?;
             
+        result.message
+            .map(|m| m.content)
+            .ok_or_else(|| super::EngineError::Parse("No translation result".to_string()))
+    }
+
+    async fn translate_image(&self, image_base64: &str, prompt: &str, vlm_model: &str) -> Result<String, super::EngineError> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
+
+        let model = if vlm_model.is_empty() { &self.model } else { vlm_model };
+
+        let request = OllamaRequest {
+            model: model.to_string(),
+            messages: vec![
+                OllamaMessage {
+                    role: "user".to_string(),
+                    content: prompt.to_string(),
+                    images: Some(vec![image_base64.to_string()]),
+                },
+            ],
+            stream: false,
+        };
+
+        let response = client
+            .post(format!("{}/api/chat", self.url))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
+
+        let result: OllamaResponse = response
+            .json()
+            .await
+            .map_err(|e| super::EngineError::Parse(e.to_string()))?;
+
         result.message
             .map(|m| m.content)
             .ok_or_else(|| super::EngineError::Parse("No translation result".to_string()))

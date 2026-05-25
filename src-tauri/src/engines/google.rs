@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct GoogleEngine {
@@ -47,7 +48,10 @@ impl GoogleEngine {
     ) -> Result<String, super::EngineError> {
         let is_unofficial_api = endpoint.contains("/translate_a/");
         
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| super::EngineError::Network(e.to_string()))?;
         let mut params = if is_unofficial_api {
             vec![
                 ("client", "gtx"),
