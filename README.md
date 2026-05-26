@@ -7,8 +7,7 @@
 ### 核心翻译
 - **剪贴板自动翻译** — 复制任意文本后，翻译结果实时显示在悬浮窗口中，无需手动操作
 - **多翻译引擎** — 支持百度翻译、Google 翻译、大模型 API（OpenAI 兼容）、本地 Ollama
-- **LaTeX 公式渲染** — 自动识别并渲染 `$...$`（行内）和 `$$...$$`（块级）公式，适合学术场景
-- **图片翻译（VLM）** — 支持视觉语言模型图片翻译（仅 LLM 引擎）
+- **LaTeX 公式渲染** — 自动识别并渲染 `$...$`（行内）和 `$$...$$`（块级）公式，适合学术场景（仅大模型 API 和 Ollama 引擎支持）
 
 ### 划词翻译
 - **划词自动翻译** — 选中文本后自动翻译，支持鼠标拖选触发
@@ -67,9 +66,8 @@ pnpm tauri build
 - **官方 API**：填入官方 URL + API Key（需要 Google Cloud 账号）
 
 ### 大模型 API
-1. 支持任何 OpenAI 兼容接口（SiliconFlow、DeepSeek、Moonshot、智谱、Groq、Together、LM Studio、vLLM 等）
-2. 填入 API 地址、API Key 和模型名
-3. 默认使用 SiliconFlow 的 `deepseek-ai/DeepSeek-V3`
+- 支持任何 OpenAI 兼容接口（DeepSeek、Moonshot、智谱、Groq、Together、LM Studio、vLLM 等）
+- 填入 API 地址、API Key 和模型名
 
 ### Ollama（本地模型）
 1. 安装并启动 [Ollama](https://ollama.com/)
@@ -92,6 +90,11 @@ pnpm tauri build
    - **快捷键触发**：按 `Alt+Q`（可自定义）翻译选中文本
 3. 翻译结果在鼠标附近弹出，点击复制按钮可复制结果
 
+## 计划功能
+
+- [ ] 图片翻译（VLM）— 支持视觉语言模型图片翻译
+- [ ] 更多翻译引擎支持
+
 ## 版本历史
 
 ### v0.0.7（2026-05-25）
@@ -104,7 +107,6 @@ pnpm tauri build
 
 ### v0.0.5（2026-05-01）
 - 新增最顶层显示、自动显示开关
-- 新增图片翻译（VLM）支持
 - 设置文件路径迁移至 `~/translate_app.json`
 - 修复翻译卡死、设置反序列化失败等问题
 
@@ -137,4 +139,4 @@ pnpm tauri build
 
 ## License
 
-MIT
+[MIT](LICENSE)
