@@ -34,4 +34,5 @@ dirs = "6"
 async-trait = "0.1"
 tauri-plugin-global-shortcut = "2"
 enigo = { version = "0.2", features = ["serde"] }
-winapi = { version = "0.3", features = ["winuser", "minwindef", "windef"] }
+winapi = { version = "0.3", features = ["winuser", "minwindef", "windef", "handleapi", "processthreadsapi", "winbase", "winnt"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Accessibility"] }

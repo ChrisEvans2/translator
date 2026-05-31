@@ -27,7 +27,7 @@ cargo test --manifest-path src-tauri/Cargo.toml baidu   # Run single test
 
 **No frontend test framework configured** — verify changes manually via `pnpm tauri dev`.
 
-## Agent Workflow (MANDATORY — read WORKFLOW.md for full details)
+## OpenCode Workflow (OpenCode only — read OPENCODE_WORKFLOW.md for full details)
 
 1. **On implementation tasks**: launch Hephaestus (impl) + Momus (review) + Librarian (research) in parallel background agents.
 2. **After implementation**: update `Feature.md` with what changed (small incremental notes).
@@ -185,7 +185,7 @@ invoke('set_settings', { settings }).catch(console.error);
 
 ## Documentation
 
-- Workflow: `WORKFLOW.md`
+- OpenCode workflow: `OPENCODE_WORKFLOW.md`
 - Changelog: `CHANGELOG.md`
 - In-progress features: `Feature.md` (cleared on each commit)
 - Specs/plans: `docs/superpowers/`

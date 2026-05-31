@@ -802,14 +802,14 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       </button>
                       {hoveredTooltip === 'selection_auto_mode' && tooltipPos && (
                         <div className="fixed px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-[9999]" style={{ left: tooltipPos.left - 160, top: tooltipPos.top }}>
-                          选中文本后自动翻译，关闭后需按快捷键触发
+                          Windows 使用 UI Automation 读取选区，不模拟复制
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between p-2 rounded bg-[#212121]">
-                    <label className="text-sm font-medium">恢复剪贴板</label>
+                    <label className="text-sm font-medium">快捷键复制后恢复剪贴板</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -829,7 +829,7 @@ export function SettingsModal({ open = true, onOpenChange }: SettingsModalProps)
                       </button>
                       {hoveredTooltip === 'selection_restore_clipboard' && tooltipPos && (
                         <div className="fixed px-3 py-1.5 bg-[#616161] text-white text-xs rounded shadow-lg whitespace-nowrap z-[9999]" style={{ left: tooltipPos.left - 180, top: tooltipPos.top }}>
-                          翻译后恢复剪贴板原始内容，避免覆盖复制内容
+                          仅快捷键触发模式生效，自动翻译不会修改剪贴板
                         </div>
                       )}
                     </div>
