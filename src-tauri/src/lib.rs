@@ -159,8 +159,8 @@ fn minimize_window(window: tauri::WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn close_window(window: tauri::WebviewWindow) -> Result<(), String> {
-    window.close().map_err(|e| e.to_string())
+fn close_window(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 #[tauri::command]

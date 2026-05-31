@@ -52,11 +52,8 @@ export function Titlebar({ onSettingsClick, onCopyClick, onEngineChange, current
     }
 
     if (e.button === 2) {
-      void getCurrentWindow().close().catch((error) => {
+      void invoke('close_window').catch((error) => {
         console.error('close_window failed:', error);
-        void invoke('close_window').catch((fallbackError) => {
-          console.error('close_window fallback failed:', fallbackError);
-        });
       });
     }
   };

@@ -45,3 +45,7 @@ pnpm tauri build
 ## 完整更新日志
 
 详见 [CHANGELOG.md](https://github.com/ChrisEvans2/translator/blob/main/CHANGELOG.md)
+
+## 补充修复
+
+- 标题栏右键退出时会终止整个应用，避免主窗口关闭后后台进程继续运行。
