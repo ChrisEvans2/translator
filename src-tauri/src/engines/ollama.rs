@@ -36,8 +36,16 @@ struct OllamaMessageResponse {
 impl OllamaEngine {
     pub fn new(url: String, model: String) -> Self {
         Self {
-            url: if url.is_empty() { "http://localhost:11434".to_string() } else { url },
-            model: if model.is_empty() { "llama2".to_string() } else { model },
+            url: if url.is_empty() {
+                "http://localhost:11434".to_string()
+            } else {
+                url
+            },
+            model: if model.is_empty() {
+                "llama2".to_string()
+            } else {
+                model
+            },
         }
     }
 }
@@ -48,14 +56,19 @@ impl super::TranslationEngine for OllamaEngine {
         "ollama"
     }
 
-    async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, super::EngineError> {
+    async fn translate(
+        &self,
+        text: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<String, super::EngineError> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| super::EngineError::Network(e.to_string()))?;
         let to_name = super::lang_code_to_name(to);
         let from_name = super::lang_code_to_name(from);
-        
+
         let system_prompt = if from == "auto" {
             format!("You are a translator. Translate the following text to {}. Preserve all LaTeX formulas exactly as they appear, including their $ or $$ delimiters. Output only the translated text without any explanation.", to_name)
         } else {
@@ -78,41 +91,49 @@ impl super::TranslationEngine for OllamaEngine {
             ],
             stream: false,
         };
-        
+
         let response = client
             .post(format!("{}/api/chat", self.url))
             .json(&request)
             .send()
             .await
             .map_err(|e| super::EngineError::Network(e.to_string()))?;
-            
+
         let result: OllamaResponse = response
             .json()
             .await
             .map_err(|e| super::EngineError::Parse(e.to_string()))?;
-            
-        result.message
+
+        result
+            .message
             .map(|m| m.content)
             .ok_or_else(|| super::EngineError::Parse("No translation result".to_string()))
     }
 
-    async fn translate_image(&self, image_base64: &str, prompt: &str, vlm_model: &str) -> Result<String, super::EngineError> {
+    async fn translate_image(
+        &self,
+        image_base64: &str,
+        prompt: &str,
+        vlm_model: &str,
+    ) -> Result<String, super::EngineError> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|e| super::EngineError::Network(e.to_string()))?;
 
-        let model = if vlm_model.is_empty() { &self.model } else { vlm_model };
+        let model = if vlm_model.is_empty() {
+            &self.model
+        } else {
+            vlm_model
+        };
 
         let request = OllamaRequest {
             model: model.to_string(),
-            messages: vec![
-                OllamaMessage {
-                    role: "user".to_string(),
-                    content: prompt.to_string(),
-                    images: Some(vec![image_base64.to_string()]),
-                },
-            ],
+            messages: vec![OllamaMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+                images: Some(vec![image_base64.to_string()]),
+            }],
             stream: false,
         };
 
@@ -128,7 +149,8 @@ impl super::TranslationEngine for OllamaEngine {
             .await
             .map_err(|e| super::EngineError::Parse(e.to_string()))?;
 
-        result.message
+        result
+            .message
             .map(|m| m.content)
             .ok_or_else(|| super::EngineError::Parse("No translation result".to_string()))
     }

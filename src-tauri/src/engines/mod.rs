@@ -30,7 +30,10 @@ impl std::fmt::Display for EngineError {
             EngineError::Timeout => write!(f, "请求超时，请检查网络连接"),
             EngineError::Parse(msg) => {
                 if msg == "No translation result" {
-                    write!(f, "翻译失败：API 未返回结果。请检查 API 凭证是否已正确配置。")
+                    write!(
+                        f,
+                        "翻译失败：API 未返回结果。请检查 API 凭证是否已正确配置。"
+                    )
                 } else {
                     write!(f, "解析错误: {}", msg)
                 }
@@ -64,7 +67,14 @@ pub fn lang_code_to_name(code: &str) -> &str {
 pub trait TranslationEngine: Send + Sync {
     fn name(&self) -> &'static str;
     async fn translate(&self, text: &str, from: &str, to: &str) -> Result<String, EngineError>;
-    async fn translate_image(&self, _image_base64: &str, _prompt: &str, _vlm_model: &str) -> Result<String, EngineError> {
-        Err(EngineError::Network("Image translation not supported for this engine".to_string()))
+    async fn translate_image(
+        &self,
+        _image_base64: &str,
+        _prompt: &str,
+        _vlm_model: &str,
+    ) -> Result<String, EngineError> {
+        Err(EngineError::Network(
+            "Image translation not supported for this engine".to_string(),
+        ))
     }
 }

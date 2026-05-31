@@ -30,7 +30,7 @@ impl BaiduEngine {
     fn generate_sign(&self, text: &str, salt: &str) -> String {
         let app_id = self.app_id.trim();
         let secret_key = self.secret_key.trim();
-        use md5::{Md5, Digest};
+        use md5::{Digest, Md5};
         let input = format!("{}{}{}{}", app_id, text, salt, secret_key);
         eprintln!("[Baidu DEBUG] app_id: '{}'", app_id);
         eprintln!("[Baidu DEBUG] secret_key: '{}'", secret_key);
@@ -91,21 +91,41 @@ impl TranslationEngine for BaiduEngine {
             .map_err(|e| EngineError::Parse(format!("Failed to read response body: {}", e)))?;
 
         if body.is_empty() {
-            return Err(EngineError::Network(format!("百度翻译 API 返回空响应 (HTTP {})", status)));
+            return Err(EngineError::Network(format!(
+                "百度翻译 API 返回空响应 (HTTP {})",
+                status
+            )));
         }
 
-        let result: BaiduResponse = serde_json::from_str(&body)
-            .map_err(|e| EngineError::Parse(format!("error decoding response body: {}\nRaw: {}", e, body.chars().take(200).collect::<String>())))?;
-            
+        let result: BaiduResponse = serde_json::from_str(&body).map_err(|e| {
+            EngineError::Parse(format!(
+                "error decoding response body: {}\nRaw: {}",
+                e,
+                body.chars().take(200).collect::<String>()
+            ))
+        })?;
+
         if let Some(error_code) = result.error_code {
             match error_code.as_str() {
                 "54003" => return Err(EngineError::RateLimit),
-                "54001" | "54005" | "58000" => return Err(EngineError::Auth(format!("签名错误: {}", error_code))),
-                _ => return Err(EngineError::Network(format!("API error: {}{}", error_code, result.error_msg.map(|m| format!(" - {}", m)).unwrap_or_default()))),
+                "54001" | "54005" | "58000" => {
+                    return Err(EngineError::Auth(format!("签名错误: {}", error_code)))
+                }
+                _ => {
+                    return Err(EngineError::Network(format!(
+                        "API error: {}{}",
+                        error_code,
+                        result
+                            .error_msg
+                            .map(|m| format!(" - {}", m))
+                            .unwrap_or_default()
+                    )))
+                }
             }
         }
-        
-        result.trans_result
+
+        result
+            .trans_result
             .and_then(|r| r.into_iter().next())
             .map(|t| t.dst)
             .ok_or_else(|| EngineError::Parse("No translation result".to_string()))

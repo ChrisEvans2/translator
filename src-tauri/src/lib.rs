@@ -1,17 +1,25 @@
-mod settings;
 mod clipboard;
 mod engines;
 mod selection;
+mod settings;
 
 use clipboard::spawn_clipboard_monitor;
+use engines::{
+    baidu::BaiduEngine, google::GoogleEngine, llmapi::LLMApiEngine, ollama::OllamaEngine,
+    TranslationEngine, TranslationResult,
+};
 use settings::{get_settings, set_settings};
-use engines::{TranslationResult, TranslationEngine, baidu::BaiduEngine, google::GoogleEngine, llmapi::LLMApiEngine, ollama::OllamaEngine};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[tauri::command]
-async fn translate(text: String, from: String, to: String, engine: String) -> Result<TranslationResult, String> {
+async fn translate(
+    text: String,
+    from: String,
+    to: String,
+    engine: String,
+) -> Result<TranslationResult, String> {
     let settings = get_settings()?;
-    
+
     // 验证凭证是否已配置
     let credential_error = match engine.as_str() {
         "baidu" if settings.baidu_app_id.is_empty() || settings.baidu_secret_key.is_empty() => {
@@ -20,7 +28,11 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
         "llmapi" if settings.llmapi_api_key.is_empty() => {
             Some("大模型API Key 未配置。请在设置中填入 API Key。")
         }
-        "google" if settings.google_mirror_url.is_empty() && settings.google_official_url.is_empty() && settings.google_api_key.is_empty() => {
+        "google"
+            if settings.google_mirror_url.is_empty()
+                && settings.google_official_url.is_empty()
+                && settings.google_api_key.is_empty() =>
+        {
             Some("Google 翻译配置未完成。请在设置中至少填入镜像源 URL、官方 URL 或 API Key 之一。")
         }
         "ollama" if settings.ollama_url.is_empty() => {
@@ -28,7 +40,7 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
         }
         _ => None,
     };
-    
+
     if let Some(error_msg) = credential_error {
         return Ok(TranslationResult {
             text: String::new(),
@@ -36,17 +48,31 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
             error: Some(error_msg.to_string()),
         });
     }
-    
+
     let translator: Box<dyn TranslationEngine> = match engine.as_str() {
-        "baidu" => Box::new(BaiduEngine::new(settings.baidu_app_id, settings.baidu_secret_key)),
-        "google" => Box::new(GoogleEngine::new(settings.google_mirror_url, settings.google_official_url, settings.google_api_key)),
-        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
-        "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
+        "baidu" => Box::new(BaiduEngine::new(
+            settings.baidu_app_id,
+            settings.baidu_secret_key,
+        )),
+        "google" => Box::new(GoogleEngine::new(
+            settings.google_mirror_url,
+            settings.google_official_url,
+            settings.google_api_key,
+        )),
+        "llmapi" => Box::new(LLMApiEngine::new(
+            settings.llmapi_api_key,
+            settings.llmapi_url,
+            settings.llmapi_model,
+        )),
+        "ollama" => Box::new(OllamaEngine::new(
+            settings.ollama_url,
+            settings.ollama_model,
+        )),
         _ => return Err(format!("Unknown engine: {}", engine)),
     };
-    
+
     let from_lang = &from;
-    
+
     match translator.translate(&text, from_lang, &to).await {
         Ok(translated) => Ok(TranslationResult {
             text: translated,
@@ -62,9 +88,13 @@ async fn translate(text: String, from: String, to: String, engine: String) -> Re
 }
 
 #[tauri::command]
-async fn translate_image(image_base64: String, to: String, engine: String) -> Result<TranslationResult, String> {
+async fn translate_image(
+    image_base64: String,
+    to: String,
+    engine: String,
+) -> Result<TranslationResult, String> {
     let settings = get_settings()?;
-    
+
     if !settings.image_translation_enabled {
         return Ok(TranslationResult {
             text: String::new(),
@@ -77,13 +107,22 @@ async fn translate_image(image_base64: String, to: String, engine: String) -> Re
     let prompt = format!("Translate the text in this image to {}. Output only the translated text without any explanation.", to_name);
 
     let translator: Box<dyn TranslationEngine> = match engine.as_str() {
-        "llmapi" => Box::new(LLMApiEngine::new(settings.llmapi_api_key, settings.llmapi_url, settings.llmapi_model)),
-        "ollama" => Box::new(OllamaEngine::new(settings.ollama_url, settings.ollama_model)),
-        _ => return Ok(TranslationResult {
-            text: String::new(),
-            engine: engine.clone(),
-            error: Some("图片翻译仅支持大模型API和Ollama引擎。".to_string()),
-        }),
+        "llmapi" => Box::new(LLMApiEngine::new(
+            settings.llmapi_api_key,
+            settings.llmapi_url,
+            settings.llmapi_model,
+        )),
+        "ollama" => Box::new(OllamaEngine::new(
+            settings.ollama_url,
+            settings.ollama_model,
+        )),
+        _ => {
+            return Ok(TranslationResult {
+                text: String::new(),
+                engine: engine.clone(),
+                error: Some("图片翻译仅支持大模型API和Ollama引擎。".to_string()),
+            })
+        }
     };
 
     let vlm_model = match engine.as_str() {
@@ -92,7 +131,10 @@ async fn translate_image(image_base64: String, to: String, engine: String) -> Re
         _ => "",
     };
 
-    match translator.translate_image(&image_base64, &prompt, vlm_model).await {
+    match translator
+        .translate_image(&image_base64, &prompt, vlm_model)
+        .await
+    {
         Ok(translated) => Ok(TranslationResult {
             text: translated,
             engine: engine.clone(),
@@ -108,27 +150,24 @@ async fn translate_image(image_base64: String, to: String, engine: String) -> Re
 
 #[tauri::command]
 fn start_dragging(window: tauri::WebviewWindow) -> Result<(), String> {
-    window
-        .start_dragging()
-        .map_err(|e| e.to_string())
+    window.start_dragging().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn minimize_window(window: tauri::WebviewWindow) -> Result<(), String> {
-    window
-        .minimize()
-        .map_err(|e| e.to_string())
+    window.minimize().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn close_window(window: tauri::WebviewWindow) -> Result<(), String> {
-    window
-        .close()
-        .map_err(|e| e.to_string())
+    window.close().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn set_window_always_on_top(window: tauri::WebviewWindow, always_on_top: bool) -> Result<(), String> {
+fn set_window_always_on_top(
+    window: tauri::WebviewWindow,
+    always_on_top: bool,
+) -> Result<(), String> {
     window
         .set_always_on_top(always_on_top)
         .map_err(|e| e.to_string())
@@ -157,20 +196,17 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     let min_width = (520.0_f64 * 2.0 / 3.0).round();
     let min_height = (420.0_f64 * 2.0 / 3.0).round();
 
-    let window = WebviewWindowBuilder::new(
-        &app,
-        "settings",
-        WebviewUrl::App("settings.html".into()),
-    )
-    .title("设置")
-    .decorations(false)
-    .transparent(false)
-    .resizable(true)
-    .center()
-    .inner_size(width, height)
-    .min_inner_size(min_width, min_height)
-    .build()
-    .map_err(|e| e.to_string())?;
+    let window =
+        WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
+            .title("设置")
+            .decorations(false)
+            .transparent(false)
+            .resizable(true)
+            .center()
+            .inner_size(width, height)
+            .min_inner_size(min_width, min_height)
+            .build()
+            .map_err(|e| e.to_string())?;
 
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
@@ -204,18 +240,20 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             spawn_clipboard_monitor(app.handle().clone());
-            
+
             #[cfg(desktop)]
-            let _ = app.handle().plugin(tauri_plugin_global_shortcut::Builder::new().build());
-            
+            let _ = app
+                .handle()
+                .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+
             let settings = get_settings().unwrap_or_default();
-            
+
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_always_on_top(settings.always_on_top);
             }
-            
+
             let _ = selection::apply_settings(app.handle().clone(), &settings);
-            
+
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
